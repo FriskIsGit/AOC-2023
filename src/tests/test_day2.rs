@@ -1,4 +1,7 @@
+use crate::days;
+use crate::days::{InputType};
+
 #[test]
-fn test_fail(){
-    assert_eq!(4, 5);
+fn test_demo(){
+
 }

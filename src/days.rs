@@ -6,7 +6,8 @@ pub fn read_contents(day: u32, input: InputType) -> String {
     }
 
     let path: String = match input{
-        InputType::Demo => format!("./demo/demo{day}.txt"),
+        InputType::DemoPart1 => format!("./demo_p1/demo{day}.txt"),
+        InputType::DemoPart2 => format!("./demo_p2/demo{day}.txt"),
         InputType::Full => format!("./full/input{day}.txt"),
         InputType::Custom(file_path) => file_path,
     };
@@ -27,9 +28,12 @@ pub fn read_lines(day: u32, input: InputType) -> Vec<String> {
     lines
 }
 
-#[warn(dead_code)]
-pub enum InputType{
-    Demo, Full, Custom(String),
+pub enum InputType {
+    DemoPart1,
+    DemoPart2,
+    Full,
+    #[warn(dead_code)]
+    Custom(String),
 }
 
-mod day1;
+pub mod day1;
