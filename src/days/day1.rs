@@ -1,4 +1,3 @@
-
 pub fn trebuchet_1(lines: Vec<String>) -> usize {
     // initially dummy values
     let mut left_digit = 0;
@@ -17,7 +16,7 @@ pub fn trebuchet_1(lines: Vec<String>) -> usize {
                 break;
             }
         };
-        let calibration_value = left_digit *  10 + right_digit;
+        let calibration_value = left_digit * 10 + right_digit;
         sum += calibration_value as usize;
     }
     println!("Total sum: {sum}");
@@ -26,6 +25,7 @@ pub fn trebuchet_1(lines: Vec<String>) -> usize {
 
 const NUMBERS_STR: [&str; 9] = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
 const NUMBERS: [usize; 9] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+
 pub fn trebuchet_2(lines: Vec<String>) -> usize {
     // initially dummy values
     let mut left_digit = 0;
@@ -50,21 +50,22 @@ pub fn trebuchet_2(lines: Vec<String>) -> usize {
                 break;
             }
         };
-        let calibration_value = left_digit *  10 + right_digit;
+        let calibration_value = left_digit * 10 + right_digit;
         sum += calibration_value as usize;
     }
     println!("Total sum: {sum}");
     sum
 }
-#[warn(non_snake_case)]
+
+#[allow(non_snake_case)]
 pub fn match_for_digit(line: &str, index: usize) -> Option<usize> {
     for (i, NUMBER) in NUMBERS_STR.iter().enumerate() {
         let end = index + NUMBER.len();
         if end > line.len() {
-            continue
+            continue;
         }
         if &line[index..end] == *NUMBER {
-            return Some(NUMBERS[i])
+            return Some(NUMBERS[i]);
         }
     }
     None

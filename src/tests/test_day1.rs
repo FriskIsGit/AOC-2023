@@ -1,5 +1,4 @@
-use crate::days;
-use crate::days::{day1, InputType};
+use crate::days::{self, day1, InputType};
 
 #[test]
 fn test_demo_part1() {
@@ -39,4 +38,18 @@ fn test_custom_part1() {
 fn test_custom_part2() {
     let lines = days::read_lines(1, InputType::Custom("custom/one_line1.txt".into()));
     assert_eq!(day1::trebuchet_2(lines), 29)
+}
+
+#[test]
+fn other_full_input_p1() {
+    let lines = days::read_lines(1, InputType::Custom("custom/other_full_input.txt".into()));
+    let computed_sum = day1::trebuchet_1(lines);
+    assert_eq!(computed_sum, 54239)
+}
+
+#[test]
+fn other_full_input_p2() {
+    let lines = days::read_lines(1, InputType::Custom("custom/other_full_input.txt".into()));
+    let computed_sum = day1::trebuchet_2(lines);
+    assert_eq!(computed_sum, 55343)
 }
