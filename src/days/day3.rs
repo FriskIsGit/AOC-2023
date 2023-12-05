@@ -131,6 +131,7 @@ fn adjacent_star(row: usize, col: usize, end: usize, schematic: &Vec<Vec<char>>)
     return None;
 }
 
+// TODO: Improvement: Don't allocate every cell for stars
 pub fn gear_ratios2(lines: Vec<String>) -> usize {
     let all_rows = lines.len();
     let all_columns = lines[0].len();
