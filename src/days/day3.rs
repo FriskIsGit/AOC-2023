@@ -1,4 +1,4 @@
-use crate::days::InputType;
+use std::collections::HashMap;
 
 pub fn gear_ratios1(lines: Vec<String>) -> usize {
     let mut schematic = vec![vec!['.'; lines[0].len()]; lines.len()];
@@ -131,13 +131,11 @@ fn adjacent_star(row: usize, col: usize, end: usize, schematic: &Vec<Vec<char>>)
     return None;
 }
 
-// TODO: Improvement: Don't allocate every cell for stars
 pub fn gear_ratios2(lines: Vec<String>) -> usize {
     let all_rows = lines.len();
     let all_columns = lines[0].len();
-    println!("{all_rows}x{all_columns}");
     let mut schematic = vec![vec!['.'; all_columns]; all_rows];
-    let mut stars = vec![vec![StarParts::new(); all_columns]; all_rows];
+    let mut star_map: HashMap<u16, StarParts> = HashMap::new();
     for (row, line) in lines.iter().enumerate() {
         for (col, ascii_char) in line.chars().enumerate() {
             schematic[row][col] = ascii_char;
@@ -164,9 +162,14 @@ pub fn gear_ratios2(lines: Vec<String>) -> usize {
                         if let Some(star) = adjacent_star(row, col, end_inclusive, &schematic) {
                             let digits = &lines[row][col..=end_inclusive];
                             let number = digits.parse::<usize>().unwrap();
-                            stars[star.0][star.1].add(number);
+                            let hash = calculate_hash(star.0 as u16, star.1 as u16);
+                            if !star_map.contains_key(&hash) {
+                                star_map.insert(hash, StarParts::new());
+                            }
+                            let star_key = star_map.get_mut(&hash);
+                            let mut star = star_key.expect("Must exist at this point");
+                            star.add(number);
                         }
-
                     }
                     // Move iterator
                     col = end_inclusive;
@@ -177,17 +180,24 @@ pub fn gear_ratios2(lines: Vec<String>) -> usize {
         }
     }
     let mut gear_sum = 0;
-    for row in 0..schematic.len() {
-        let row_arr = &schematic[row];
-        let mut col = 0;
-        while col < row_arr.len() {
-            if let Some(factor) = stars[row][col].factor() {
-                gear_sum += factor;
-            }
-            col += 1;
+    for star in star_map.values() {
+        if let Some(factor) = star.factor() {
+            gear_sum += factor;
         }
     }
     gear_sum
+}
+
+fn calculate_hash(x: u16, y: u16) -> u16 {
+    let mut hash = 0u16;
+    hash |= x;
+    hash |= y << 8;
+    hash
+}
+fn get_position(hash: u16) -> (u16, u16) {
+    let x = hash & 0xFF;
+    let y = hash >> 8;
+    (x, y)
 }
 
 #[derive(Clone)]
@@ -216,117 +226,4 @@ impl StarParts {
         }
         None
     }
-}
-
-// This will return the gear ratio of exactly two numbers OR 0
-fn search_around_star(row: usize, col: usize, schematic: &Vec<Vec<char>>) -> usize {
-    let all_columns = schematic[0].len();
-    let mut number_count = 0;
-    let mut top_left = 0;
-    let mut top = 0;
-    let mut top_right = 0;
-    // Check top left
-    if row != 0 && col != 0 && schematic[row - 1][col - 1].is_ascii_digit() {
-        top_left = get_number(col - 1, &schematic[row - 1]);
-        number_count += 1;
-    }
-    // Check top only if top_left is missing
-    if top_left == 0 && row != 0 && schematic[row - 1][col].is_ascii_digit() {
-        top = get_number(col, &schematic[row - 1]);
-        number_count += 1;
-    }
-    // Check top right only if top is missing
-    if top == 0 && row != 0 && col + 1 < all_columns && schematic[row - 1][col + 1].is_ascii_digit() {
-        top_right = get_number(col + 1, &schematic[row - 1]);
-        if top_left != top_right {
-            number_count += 1;
-        }
-    }
-    let mut left = 0;
-    if col != 0 && schematic[row][col - 1].is_ascii_digit() { // Check left
-        left = get_number(col - 1, &schematic[row]);
-        number_count += 1;
-    }
-    if number_count > 2 {
-        return 0;
-    }
-    let mut right = 0;
-    if col + 1 < all_columns && schematic[row][col + 1].is_ascii_digit() { // Check right
-        right = get_number(col + 1, &schematic[row]);
-        number_count += 1;
-    }
-    if number_count > 2 {
-        return 0;
-    }
-    let all_rows = schematic.len();
-    let mut bottom_left = 0;
-    let mut bottom = 0;
-    let mut bottom_right = 0;
-    // Check bottom left
-    if row + 1 < all_rows && col != 0 && schematic[row + 1][col - 1].is_ascii_digit() {
-        bottom_left = get_number(col - 1, &schematic[row + 1]);
-        number_count += 1;
-    }
-    if number_count > 2 {
-        return 0;
-    }
-    // Check bottom only if bot_left is missing
-    if bottom_left == 0 && row + 1 < all_rows && schematic[row + 1][col].is_ascii_digit() {
-        bottom = get_number(col, &schematic[row + 1]);
-        number_count += 1;
-    }
-    if number_count > 2 {
-        return 0;
-    }
-    // Check bot_right only if bottom is missing
-    if bottom == 0 && row + 1 < all_rows && col + 1 < all_columns && schematic[row + 1][col + 1].is_ascii_digit() {
-        bottom_right = get_number(col + 1, &schematic[row + 1]);
-        if bottom_left != bottom_right {
-            number_count += 1;
-        }
-    }
-    if number_count != 2 {
-        return 0;
-    }
-    multiply_two_non_zeroes(vec![top_left, top, top_right, left, right, bottom_left, bottom, bottom_right])
-}
-
-fn get_number(col: usize, row_arr: &Vec<char>) -> usize {
-    let mut end_inclusive = col;
-    let mut st_inclusive = col;
-    for i in (0..col).rev() {
-        if row_arr[i].is_ascii_digit() {
-            st_inclusive = i;
-        } else {
-            break;
-        }
-    }
-    // Find where number ends (col..=end)
-    for i in col..row_arr.len() {
-        if row_arr[i].is_ascii_digit() {
-            end_inclusive = i;
-        } else {
-            break;
-        }
-    }
-    let number: String = row_arr[st_inclusive..=end_inclusive].iter().collect();
-    println!("Mapped number: {number}");
-    number.parse::<usize>().expect("Failed to parse number")
-}
-
-fn multiply_two_non_zeroes(vec: Vec<usize>) -> usize {
-    let mut factor1 = 0;
-    let mut factor2 = 0;
-    for num in vec {
-        if num == 0 {
-            continue;
-        }
-        if factor1 == 0 {
-            factor1 = num;
-            continue;
-        }
-        factor2 = num;
-        break;
-    }
-    factor1 * factor2
 }
