@@ -1,4 +1,5 @@
-use std::fmt::{Display, format, Formatter};
+use std::cmp::{max, min};
+use std::fmt::{Display, Formatter};
 use std::ops::Range;
 
 const SECTION_NAMES: [&str; 8] = ["seeds", "seed-to-soil", "soil-to-fertilizer", "fertilizer-to-water", "water-to-light",
@@ -7,13 +8,18 @@ const SECTION_NAMES: [&str; 8] = ["seeds", "seed-to-soil", "soil-to-fertilizer",
 // [destination range start] [source range start] [range length]
 pub fn seeds1(lines: Vec<String>) -> usize {
     let first_line = &lines[0];
-    let colon = first_line.find(':').expect("Every line should contain a colon");
+    let colon = first_line.find(':').expect("Seeds line should contain a colon");
     let str_seeds = first_line[colon+2..].split(' ');
     let mut seeds = Vec::with_capacity(4);
     for token in str_seeds {
         let seed_id = token.parse::<usize>().unwrap();
         seeds.push(seed_id);
     }
+    let sections = parse_sections(lines);
+    find_lowest_location_number1(seeds, sections)
+}
+
+fn parse_sections(lines: Vec<String>) -> Vec<Vec<MappedRange>> {
     let mut sections: Vec<Vec<MappedRange>> = vec![vec![]];
     let mut expect_header = true;
     for i in 2..lines.len() {
@@ -41,7 +47,10 @@ pub fn seeds1(lines: Vec<String>) -> usize {
         let mut vec_of_ranges = sections.last_mut().unwrap();
         vec_of_ranges.push(MappedRange::new(src_range, dest_range));
     }
+    sections
+}
 
+fn find_lowest_location_number1(seeds: Vec<usize>, sections: Vec<Vec<MappedRange>>) -> usize {
     let mut translations = seeds;
     let mut next_translations = vec![];
     for i in 1..8 {
@@ -53,7 +62,7 @@ pub fn seeds1(lines: Vec<String>) -> usize {
             // because apparently ranges don't overlap themselves and none of it is clearly stated in the problem
             let mut corresponded_to_none = true;
             for mapped_range in section {
-                if mapped_range.can_correspond(id) {
+                if mapped_range.contains(id) {
                     let dest = mapped_range.get_destination(id);
                     next_translations.push(dest);
                     corresponded_to_none = false;
@@ -88,7 +97,7 @@ impl MappedRange {
         }
         num
     }
-    pub fn can_correspond(&self, num: usize) -> bool {
+    pub fn contains(&self, num: usize) -> bool {
         self.src_range.contains(&num)
     }
 }
@@ -96,4 +105,100 @@ impl Display for MappedRange {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.write_str(&*format!("src[{:?}] dest[{:?}]", self.src_range, self.dest_range))
     }
+}
+
+// pair: [start] [length]
+// const BUFFER_SIZE: usize = 67108864;
+const BUFFER_SIZE: usize = 6710864;
+pub fn seeds2(lines: Vec<String>) -> usize {
+    let first_line = &lines[0];
+    let colon = first_line.find(':').expect("Seeds line should contain a colon");
+    let mut str_seeds = first_line[colon+2..].split(' ');
+    let mut seed_ranges: Vec<Range<usize>> = vec![];
+    loop {
+        if let Some(left) = str_seeds.next() {
+            let right = str_seeds.next().expect("Uneven pairs");
+            let seed_id = left.parse::<usize>().unwrap();
+            let length = right.parse::<usize>().unwrap();
+            seed_ranges.push(seed_id..seed_id + length);
+        } else {
+            break;
+        }
+    }
+
+    let mut seed_buffer: Vec<usize> = Vec::with_capacity(BUFFER_SIZE);
+    let sections = parse_sections(lines);
+    let mut lowest = 999999999;
+    for seed_range in seed_ranges {
+        let length = seed_range.end - seed_range.start;
+        let splits = length / BUFFER_SIZE;
+        let last_split = length % BUFFER_SIZE;
+        // Populate seed buffer
+        for i in 0..splits {
+            let st = seed_range.start + i * BUFFER_SIZE;
+            let end = seed_range.start + (i+1) * BUFFER_SIZE;
+            for seed in st..end {
+                seed_buffer.push(seed);
+            }
+            let current_low = find_lowest_location_number2(&seed_buffer, &sections);
+            lowest = min(lowest, current_low);
+            // Clear seed buffer
+            seed_buffer.clear();
+        }
+        // Process last split the same way
+        for seed in seed_range.end-last_split..seed_range.end {
+            seed_buffer.push(seed);
+        }
+        let current_low = find_lowest_location_number2(&seed_buffer, &sections);
+        lowest = min(lowest, current_low);
+        seed_buffer.clear();
+        println!("FINISHED SET {:?}", seed_range)
+    }
+    lowest
+}
+
+fn find_lowest_location_number2(seeds: &Vec<usize>, sections: &Vec<Vec<MappedRange>>) -> usize {
+    let mut translations = vec![];
+    let to_soil_section = &sections[1];
+    for seed in seeds {
+        let mut corresponded_to_none = true;
+        for mapped_range in to_soil_section {
+            if mapped_range.contains(*seed) {
+                let dest = mapped_range.get_destination(*seed);
+                translations.push(dest);
+                corresponded_to_none = false;
+                break;
+            }
+        }
+        if corresponded_to_none {
+            for mapped_range in to_soil_section {
+                let dest = mapped_range.get_destination(*seed);
+                translations.push(dest);
+            }
+        }
+    }
+    let mut next_translations = vec![];
+    for i in 2..8 {
+        for id in translations {
+            let section = &sections[i];
+            let mut corresponded_to_none = true;
+            for mapped_range in section {
+                if mapped_range.contains(id) {
+                    let dest = mapped_range.get_destination(id);
+                    next_translations.push(dest);
+                    corresponded_to_none = false;
+                    break;
+                }
+            }
+            if corresponded_to_none {
+                for mapped_range in section {
+                    let dest = mapped_range.get_destination(id);
+                    next_translations.push(dest);
+                }
+            }
+        }
+        translations = next_translations;
+        next_translations = vec![];
+    }
+    *translations.iter().min().unwrap()
 }
