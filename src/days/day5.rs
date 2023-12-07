@@ -108,8 +108,6 @@ impl Display for MappedRange {
 }
 
 // pair: [start] [length]
-// const BUFFER_SIZE: usize = 67108864;
-const BUFFER_SIZE: usize = 6710864;
 pub fn seeds2(lines: Vec<String>) -> usize {
     let first_line = &lines[0];
     let colon = first_line.find(':').expect("Seeds line should contain a colon");
@@ -125,80 +123,7 @@ pub fn seeds2(lines: Vec<String>) -> usize {
             break;
         }
     }
-
-    let mut seed_buffer: Vec<usize> = Vec::with_capacity(BUFFER_SIZE);
-    let sections = parse_sections(lines);
-    let mut lowest = 999999999;
-    for seed_range in seed_ranges {
-        let length = seed_range.end - seed_range.start;
-        let splits = length / BUFFER_SIZE;
-        let last_split = length % BUFFER_SIZE;
-        // Populate seed buffer
-        for i in 0..splits {
-            let st = seed_range.start + i * BUFFER_SIZE;
-            let end = seed_range.start + (i+1) * BUFFER_SIZE;
-            for seed in st..end {
-                seed_buffer.push(seed);
-            }
-            let current_low = find_lowest_location_number2(&seed_buffer, &sections);
-            lowest = min(lowest, current_low);
-            // Clear seed buffer
-            seed_buffer.clear();
-        }
-        // Process last split the same way
-        for seed in seed_range.end-last_split..seed_range.end {
-            seed_buffer.push(seed);
-        }
-        let current_low = find_lowest_location_number2(&seed_buffer, &sections);
-        lowest = min(lowest, current_low);
-        seed_buffer.clear();
-        println!("FINISHED SET {:?}", seed_range)
-    }
-    lowest
+    0
 }
 
-fn find_lowest_location_number2(seeds: &Vec<usize>, sections: &Vec<Vec<MappedRange>>) -> usize {
-    let mut translations = vec![];
-    let to_soil_section = &sections[1];
-    for seed in seeds {
-        let mut corresponded_to_none = true;
-        for mapped_range in to_soil_section {
-            if mapped_range.contains(*seed) {
-                let dest = mapped_range.get_destination(*seed);
-                translations.push(dest);
-                corresponded_to_none = false;
-                break;
-            }
-        }
-        if corresponded_to_none {
-            for mapped_range in to_soil_section {
-                let dest = mapped_range.get_destination(*seed);
-                translations.push(dest);
-            }
-        }
-    }
-    let mut next_translations = vec![];
-    for i in 2..8 {
-        for id in translations {
-            let section = &sections[i];
-            let mut corresponded_to_none = true;
-            for mapped_range in section {
-                if mapped_range.contains(id) {
-                    let dest = mapped_range.get_destination(id);
-                    next_translations.push(dest);
-                    corresponded_to_none = false;
-                    break;
-                }
-            }
-            if corresponded_to_none {
-                for mapped_range in section {
-                    let dest = mapped_range.get_destination(id);
-                    next_translations.push(dest);
-                }
-            }
-        }
-        translations = next_translations;
-        next_translations = vec![];
-    }
-    *translations.iter().min().unwrap()
-}
+
