@@ -1,8 +1,8 @@
 use std::cmp::max;
 
-const RED_CUBES: u32 = 12;
-const GREEN_CUBES: u32 = 13;
-const BLUE_CUBES: u32 = 14;
+const RED_CUBES: u8 = 12;
+const GREEN_CUBES: u8 = 13;
+const BLUE_CUBES: u8 = 14;
 
 pub fn conundrum_1(lines: Vec<String>) -> usize {
     let mut id_sum = 0;
@@ -13,9 +13,6 @@ pub fn conundrum_1(lines: Vec<String>) -> usize {
         let mut bytes = line.bytes().skip(colon + 2);
         let mut possible_game = true;
         let mut cube_count = 0;
-        let mut red = 0;
-        let mut green = 0;
-        let mut blue = 0;
         let mut expect_letter = false;
         while let Some(byte) = bytes.next() {
             match byte {
@@ -33,33 +30,40 @@ pub fn conundrum_1(lines: Vec<String>) -> usize {
                     };
                     expect_letter = true;
                 }
-                b';' => {
-                    if red > RED_CUBES || green > GREEN_CUBES || blue > BLUE_CUBES {
-                        possible_game = false;
-                        // Any invalid set invalidates a game
-                        break;
-                    }
-                    red = 0;
-                    green = 0;
-                    blue = 0;
-                }
+                b';' => {}
                 b',' => {}
                 b' ' => {}
                 _ => {
-                    if expect_letter {
-                        match byte {
-                            b'r' => red += cube_count as u32,
-                            b'g' => green += cube_count as u32,
-                            b'b' => blue += cube_count as u32,
-                            _ => panic!("Unreachable")
-                        }
-                        expect_letter = false;
+                    if !expect_letter {
+                        continue
                     }
+                    match byte {
+                        b'r' => {
+                            if cube_count > RED_CUBES {
+                                possible_game = false;
+                                break;
+                            }
+                        },
+                        b'g' => {
+                            if cube_count > GREEN_CUBES {
+                                possible_game = false;
+                                break;
+                            }
+                        },
+                        b'b' => {
+                            if cube_count > BLUE_CUBES {
+                                possible_game = false;
+                                break;
+                            }
+                        },
+                        _ => panic!("Unreachable")
+                    }
+                    cube_count = 0;
+                    expect_letter = false;
                 }
             }
         }
-        // Process last set here since lines don't end with colons
-        if possible_game && red <= RED_CUBES && green <= GREEN_CUBES && blue <= BLUE_CUBES {
+        if possible_game {
             id_sum += game_id;
         }
     }
@@ -75,9 +79,6 @@ pub fn conundrum_2(lines: Vec<String>) -> usize {
         let mut max_red = 0;
         let mut max_green = 0;
         let mut max_blue = 0;
-        let mut red = 0;
-        let mut green = 0;
-        let mut blue = 0;
         let mut expect_letter = false;
         while let Some(byte) = bytes.next() {
             match byte {
@@ -92,36 +93,27 @@ pub fn conundrum_2(lines: Vec<String>) -> usize {
                         byte - 48
                     } else {
                         (byte - 48) * 10 + (next - 48)
-                    };
+                    } as usize;
                     expect_letter = true;
                 }
-                b';' => {
-                    max_red = max(red, max_red);
-                    max_green = max(green, max_green);
-                    max_blue = max(blue, max_blue);
-                    red = 0;
-                    green = 0;
-                    blue = 0;
-                }
+                b';' => {}
                 b',' => {}
                 b' ' => {}
                 _ => {
-                    if expect_letter {
-                        match byte {
-                            b'r' => red += cube_count as u32,
-                            b'g' => green += cube_count as u32,
-                            b'b' => blue += cube_count as u32,
-                            _ => panic!("Unreachable")
-                        }
-                        expect_letter = false;
+                    if !expect_letter {
+                        continue
                     }
+                    match byte {
+                        b'r' => max_red = max(cube_count, max_red),
+                        b'g' => max_green = max(cube_count, max_green),
+                        b'b' => max_blue = max(cube_count, max_blue),
+                        _ => panic!("Unreachable")
+                    }
+                    cube_count = 0;
+                    expect_letter = false;
                 }
             }
         }
-        // Process last set here since lines don't end with colons
-        max_red = max(red, max_red);
-        max_green = max(green, max_green);
-        max_blue = max(blue, max_blue);
         power_sum += (max_red * max_green * max_blue) as usize;
     }
     power_sum
