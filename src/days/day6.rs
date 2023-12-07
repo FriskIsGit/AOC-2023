@@ -1,4 +1,4 @@
-
+// This day can be improved by finding the range of x's on a parabola but still performs under 500ms
 type Milliseconds = usize;
 type Millimeters = usize;
 struct Race {
@@ -20,7 +20,7 @@ impl Race {
 }
 
 pub fn boats1(lines: Vec<String>) -> usize {
-    let mut races = parse_input(lines);
+    let mut races = parse_input(lines, false);
     let mut factor = 1;
     let mut better = 0;
     for race in races {
@@ -36,14 +36,14 @@ pub fn boats1(lines: Vec<String>) -> usize {
     factor
 }
 
-fn parse_input(lines: Vec<String>) -> Vec<Race> {
+fn parse_input(lines: Vec<String>, ignore_spaces: bool) -> Vec<Race> {
     assert_eq!(lines.len(), 2);
     let time_line      = &lines[0];
     let distance_line  = &lines[1];
     let time_colon     = time_line.find(':').unwrap();
     let distance_colon = distance_line.find(':').unwrap();
-    let times_vec      = parse_numbers(time_line, time_colon + 1);
-    let distances_vec  = parse_numbers(distance_line, distance_colon + 1);
+    let times_vec      = parse_numbers(time_line, time_colon + 1, ignore_spaces);
+    let distances_vec  = parse_numbers(distance_line, distance_colon + 1, ignore_spaces);
     let mut races = Vec::with_capacity(times_vec.len());
     println!("RACES: {}", times_vec.len());
     for i in 0..times_vec.len() {
@@ -52,7 +52,7 @@ fn parse_input(lines: Vec<String>) -> Vec<Race> {
     }
     races
 }
-fn parse_numbers(line: &str, from: usize) -> Vec<usize> {
+fn parse_numbers(line: &str, from: usize, ignore_spaces: bool) -> Vec<usize> {
     let line = line.bytes().skip(from);
     let mut expect_digit = true;
     let mut current_number: usize = 0;
@@ -65,6 +65,9 @@ fn parse_numbers(line: &str, from: usize) -> Vec<usize> {
                 current_number = current_number*10 + digit as usize;
             },
             b' ' => {
+                if ignore_spaces {
+                    continue
+                }
                 if expect_digit {
                     continue
                 }
@@ -77,4 +80,19 @@ fn parse_numbers(line: &str, from: usize) -> Vec<usize> {
     }
     numbers.push(current_number);
     numbers
+}
+
+pub fn boats2(lines: Vec<String>) -> usize {
+    let races = parse_input(lines, true);
+    assert_eq!(races.len(), 1);
+    let race = &races[0];
+    println!("RACE TIME: {} RACE DISTANCE: {}", race.time, race.best);
+    let mut better = 0;
+    for wait in 1..race.time {
+        let distance = race.get_distance_travelled(wait);
+        if distance > race.best {
+            better += 1;
+        }
+    }
+    better
 }
