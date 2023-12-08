@@ -2,13 +2,11 @@ use std::collections::HashMap;
 
 pub fn camel_cards1(lines: Vec<String>) -> usize {
     let mut hands = parse_hands(lines);
-    // sorting ascendingly because rank 1 is the worst (unintuitive)
-    sort_hands(&mut hands);
+    sort_hands(&mut hands, false);
     let mut rank = 0;
     let mut sum = 0;
     for hand in hands {
         rank += 1;
-        println!("SORTED HAND rank:{rank}, cards:{}", hand.cards);
         sum += rank * hand.bid
     }
     sum
@@ -18,10 +16,35 @@ pub fn camel_cards2(lines: Vec<String>) -> usize {
     let mut hands = parse_hands(lines);
     for hand in hands.iter_mut() {
         if hand.has_joker() && hand.kind_strength < 7 {
-            
+            // We cannot change the cards in case of a comparison of the same kind (limitation)
+            // Instead we can change the strength_kind
+            let mut character_map = HashMap::new();
+            for chr in hand.cards.chars() {
+                if chr == 'J' {
+                    continue
+                }
+                if let Some(repeats) = character_map.get(&chr) {
+                    character_map.insert(chr, repeats + 1);
+                } else {
+                    character_map.insert(chr, 1);
+                }
+            }
+            let mut most_frequent_char = '0';
+            let mut max = 0;
+            for (key, repeats) in character_map {
+                if repeats > max {
+                    max = repeats;
+                    most_frequent_char = key;
+                }
+            }
+            let str = hand.cards.replace('J', &most_frequent_char.to_string());
+            let strength = Hand::determine_kind_strength(&str);
+            if strength > hand.kind_strength {
+                hand.kind_strength = strength;
+            }
         }
     }
-    sort_hands(&mut hands);
+    sort_hands(&mut hands, true);
     let mut rank = 0;
     let mut sum = 0;
     for hand in hands {
@@ -33,7 +56,7 @@ pub fn camel_cards2(lines: Vec<String>) -> usize {
 }
 
 // sorting ascendingly because unintuitively rank 1 is the worst
-fn sort_hands(hands: &mut Vec<Hand>) {
+fn sort_hands(hands: &mut Vec<Hand>, joker: bool) {
     hands.sort_by(|hand1, hand2| {
         let strength1 = hand1.kind_strength;
         let strength2 = hand2.kind_strength;
@@ -45,8 +68,15 @@ fn sort_hands(hands: &mut Vec<Hand>) {
         for _i in 0..5 {
             let left_chr = left_iter.next().unwrap();
             let right_chr = right_iter.next().unwrap();
-            let strength_left = left_chr.strength();
-            let strength_right = right_chr.strength();
+            let strength_left;
+            let strength_right;
+            if joker {
+                strength_left = left_chr.strength_with_joker();
+                strength_right = right_chr.strength_with_joker();
+            } else {
+                strength_left = left_chr.strength();
+                strength_right = right_chr.strength();
+            }
             if strength_left == strength_right {
                 continue;
             }
@@ -93,14 +123,7 @@ impl Hand {
         false
     }
     pub fn determine_kind_strength(cards: &str) -> usize {
-        let mut character_map = HashMap::<char, usize>::with_capacity(5);
-        for chr in cards.chars() {
-            if let Some(repeats) = character_map.get(&chr) {
-                character_map.insert(chr, repeats + 1);
-            } else {
-                character_map.insert(chr, 1);
-            }
-        }
+        let character_map = Self::get_character_map(cards);
         if character_map.len() == 1 {
             return 7; // AAAAA Five of a kind,
         }
@@ -126,6 +149,18 @@ impl Hand {
             return 2; // A23A4 One pair
         }
         1 // 23456 High card
+    }
+
+    pub fn get_character_map(cards: &str) -> HashMap<char, usize> {
+        let mut character_map = HashMap::<char, usize>::with_capacity(5);
+        for chr in cards.chars() {
+            if let Some(repeats) = character_map.get(&chr) {
+                character_map.insert(chr, repeats + 1);
+            } else {
+                character_map.insert(chr, 1);
+            }
+        }
+        character_map
     }
 }
 

@@ -25,5 +25,5 @@ fn test_demo_part2() {
 fn test_full_part2() {
     let lines = days::read_lines(7, InputType::Full);
     let total_winnings = day7::camel_cards2(lines);
-    assert_eq!(total_winnings, 1)
+    assert_eq!(total_winnings, 249620106)
 }
