@@ -81,14 +81,14 @@ pub fn scratchcards2(lines: Vec<String>) -> usize {
         cards.push(card)
     }
     let borrow_checker_is_fucking_stupid = cards.len() - 1;
-    let mut scratchcards = process_cards(&mut cards, borrow_checker_is_fucking_stupid, 0);
+    let scratchcards = process_cards(&mut cards, borrow_checker_is_fucking_stupid, 0);
     scratchcards
 }
 pub fn process_cards(cards: &mut Vec<Card>, next: usize, at_id: usize) -> usize {
     let mut scratchcards = 0;
     scratchcards += next;
     for i in at_id + 1..at_id + 1 + next {
-        let mut card = &mut cards[i];
+        let card = &mut cards[i];
         let matches = card.get_matches();
         scratchcards += process_cards(cards, matches, i);
     }

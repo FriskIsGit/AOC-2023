@@ -167,7 +167,7 @@ pub fn gear_ratios2(lines: Vec<String>) -> usize {
                                 star_map.insert(hash, StarParts::new());
                             }
                             let star_key = star_map.get_mut(&hash);
-                            let mut star = star_key.expect("Must exist at this point");
+                            let star = star_key.expect("Must exist at this point");
                             star.add(number);
                         }
                     }
@@ -194,6 +194,7 @@ fn calculate_hash(x: u16, y: u16) -> u16 {
     hash |= y << 8;
     hash
 }
+#[allow(dead_code)]
 fn get_position(hash: u16) -> (u16, u16) {
     let x = hash & 0xFF;
     let y = hash >> 8;

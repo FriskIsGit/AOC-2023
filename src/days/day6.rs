@@ -14,13 +14,14 @@ impl Race {
     }
     // (t-x)*x = -x^2 + tx
     // the key is finding the vertex
+    #[allow(dead_code)]
     pub fn best_possible(&self) -> usize {
         (self.time * self.time) / 4
     }
 }
 
 pub fn boats1(lines: Vec<String>) -> usize {
-    let mut races = parse_input(lines, false);
+    let races = parse_input(lines, false);
     let mut factor = 1;
     let mut better = 0;
     for race in races {

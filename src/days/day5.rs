@@ -44,7 +44,7 @@ fn parse_sections(lines: Vec<String>) -> Vec<Vec<MappedRange>> {
         let src_range = src_range_st..src_range_st + length;
         let dest_range = dest_range_st..dest_range_st + length;
 
-        let mut vec_of_ranges = sections.last_mut().unwrap();
+        let vec_of_ranges = sections.last_mut().unwrap();
         vec_of_ranges.push(MappedRange::new(src_range, dest_range));
     }
     sections

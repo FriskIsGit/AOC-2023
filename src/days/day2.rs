@@ -30,9 +30,7 @@ pub fn conundrum_1(lines: Vec<String>) -> usize {
                     };
                     expect_letter = true;
                 }
-                b';' => {}
-                b',' => {}
-                b' ' => {}
+                b';' | b',' | b' '=> {}
                 _ => {
                     if !expect_letter {
                         continue
@@ -44,7 +42,7 @@ pub fn conundrum_1(lines: Vec<String>) -> usize {
                                 break;
                             }
                         },
-                        b'g' => {
+                        b'g'  => {
                             if cube_count > GREEN_CUBES {
                                 possible_game = false;
                                 break;
@@ -96,9 +94,7 @@ pub fn conundrum_2(lines: Vec<String>) -> usize {
                     } as usize;
                     expect_letter = true;
                 }
-                b';' => {}
-                b',' => {}
-                b' ' => {}
+                b';' | b',' | b' '=> {}
                 _ => {
                     if !expect_letter {
                         continue
@@ -114,7 +110,7 @@ pub fn conundrum_2(lines: Vec<String>) -> usize {
                 }
             }
         }
-        power_sum += (max_red * max_green * max_blue) as usize;
+        power_sum += max_red * max_green * max_blue
     }
     power_sum
 }
