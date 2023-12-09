@@ -14,6 +14,27 @@ fn test_full_part1() {
     assert_eq!(val_sum, 1916822650)
 }
 
+#[test]
+fn test_demo_part2() {
+    let lines = days::read_lines(9, InputType::DemoPart2);
+    let single_history = day9::mirage2(lines);
+    assert_eq!(single_history, 5)
+}
+
+#[test]
+fn test_demo_part2_demo1() {
+    let lines = days::read_lines(9, InputType::DemoPart1);
+    let val_sum = day9::mirage2(lines);
+    assert_eq!(val_sum, 2)
+}
+
+#[test]
+fn test_full_part2() {
+    let lines = days::read_lines(9, InputType::Full);
+    let val_sum = day9::mirage2(lines);
+    assert_eq!(val_sum, 966)
+}
+
 // ==== Sequence functions tests: ====
 
 #[test]

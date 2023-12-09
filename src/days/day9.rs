@@ -1,3 +1,4 @@
+
 pub fn mirage1(lines: Vec<String>) -> isize {
     let mut report = parse_input(lines);
 
@@ -52,13 +53,6 @@ pub fn parse_input(lines: Vec<String>) -> Vec<Vec<isize>> {
     report
 }
 
-pub fn get_two_last_elements(vec: &Vec<isize>) -> (isize, isize) {
-    let mut rev_iter = vec.iter().rev();
-    let last = rev_iter.next().unwrap();
-    let second_to_last = rev_iter.next().unwrap();
-    (*second_to_last, *last)
-}
-
 // returns common difference of an arithmetic series, None if difference is not constant
 pub fn get_common_difference(vec: &Vec<isize>) -> Option<isize> {
     let first_diff = vec[1] - vec[0];
@@ -94,8 +88,42 @@ pub fn element_value(first_value: isize, common_diff: isize, n_elements: usize) 
     first_value + common_diff * (n_elements as isize - 1)
 }
 
-pub fn mirage2(lines: Vec<String>) -> usize {
-    let report = parse_input(lines);
-
-    0
+// This code is similar but instead processes leftmost values
+pub fn mirage2(lines: Vec<String>) -> isize {
+    let mut report = parse_input(lines);
+    let mut total_sum: isize = 0;
+    for top_sequence in report.iter_mut() {
+        if let Some(common_diff) = get_common_difference(top_sequence) {
+            total_sum += top_sequence.first().unwrap() - common_diff;
+            continue
+        }
+        let mut sub_sequence = get_subsequence_of(top_sequence);
+        let mut sequence_pyramid: Vec<Vec<isize>> = vec![];
+        sequence_pyramid.push(std::mem::take(top_sequence)); // Yoink?
+        loop {
+            sequence_pyramid.push(sub_sequence);
+            let last_seq = sequence_pyramid.last_mut().unwrap();
+            if let Some(common_diff) = get_common_difference(&last_seq) {
+                // We push the next element in sequence for clarity
+                last_seq.insert(0, last_seq.first().unwrap() - common_diff);
+                break;
+            }
+            sub_sequence = get_subsequence_of(last_seq);
+        }
+        // Go from bottom up and infer next elements above from the sequence below
+        let back_index: usize = sequence_pyramid.len()-1;
+        for i in (1..=back_index).rev() {
+            let first_below: isize = *sequence_pyramid[i].first().unwrap();
+            // We need above sequence to be mutable to push next inferred element to it
+            let above_seq = &mut sequence_pyramid[i-1];
+            let first_above = above_seq.first().unwrap();
+            let next = first_above - first_below;
+            above_seq.insert(0, next);
+        }
+        for seq in &sequence_pyramid {
+            println!("{:?}", seq);
+        }
+        total_sum += sequence_pyramid.first().unwrap().first().unwrap();
+    }
+    total_sum
 }
