@@ -1,6 +1,8 @@
 use std::collections::HashMap;
+use std::io;
+use std::io::Write;
 
-pub fn wasteland1(mut lines: Vec<String>) -> usize {
+pub fn wasteland1(lines: Vec<String>) -> usize {
     let input = parse_input(lines);
     let (mut moves, network) = input;
 
@@ -41,7 +43,7 @@ pub fn parse_input(mut lines: Vec<String>) -> (LoopingIterator, HashMap<String, 
     (moves, network)
 }
 
-struct Node {
+pub struct Node {
     left: String,
     right: String,
 }
@@ -53,7 +55,7 @@ impl Node {
 }
 
 // It will loop around its data indefinitely always returning valid elements
-struct LoopingIterator {
+pub struct LoopingIterator {
     i: usize,
     len: usize,
     bytes: Vec<u8>,
@@ -100,7 +102,7 @@ pub fn wasteland2(lines: Vec<String>) -> usize {
     }
     let mut steps_required = 0;
     let ghosts = ghost_labels.len();
-    loop {
+    for _ in 0..100_0000 {
         let mov = moves.next();
         for i in 0..ghosts {
             let label= &ghost_labels[i];
@@ -111,17 +113,70 @@ pub fn wasteland2(lines: Vec<String>) -> usize {
                 ghost_labels[i] = current_node.right.to_owned();
             }
         }
+
         steps_required += 1;
+        let mut done = 0;
         let mut all_done = true;
         for label in &ghost_labels {
             if !label.ends_with('Z') {
                 all_done = false;
-                break;
+                // break;
+            }
+            else {
+                done += 1;
             }
         }
+        if done != 0 {
+            eprintln!("Done: {done}/{ghosts}");
+        }
+
         if all_done {
             break;
         }
     }
     steps_required
+}
+
+
+
+pub struct CircularBuffer {
+    i: usize,
+    len: usize,
+    speed: usize,
+}
+#[allow(dead_code)]
+impl CircularBuffer {
+    pub fn new(n_elements: usize, speed: usize) -> Self {
+        if n_elements < 1 {
+            panic!("Data cannot be empty")
+        }
+        Self {
+            i: 0,
+            len: n_elements,
+            speed,
+        }
+    }
+    pub fn next(&mut self) -> usize {
+        if self.i + self.speed < self.len {
+            self.i += self.speed;
+            return self.i;
+        }
+        let distance_to_end = self.len - self.i;
+        let move_length = self.speed - distance_to_end;
+        let modulo_speed = move_length % self.len;
+        self.i = modulo_speed;
+        return self.i;
+    }
+
+    //calculate the number of iterations required to return to the starting position
+    pub fn cycle_detection(&mut self) -> usize {
+        // 0..n_elements
+        let mut iterations = 0;
+        loop {
+            iterations += 1;
+            if self.next() == 0 {
+                return iterations;
+            }
+        }
+    }
 }
