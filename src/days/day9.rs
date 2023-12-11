@@ -80,7 +80,7 @@ pub fn get_subsequence_of(sequence: &Vec<isize>) -> Vec<isize> {
 
 pub fn sequence_sum(first_value: isize, common_diff: isize, n_elements: usize) -> isize {
     let nth_value = element_value(first_value, common_diff, n_elements);
-    (n_elements as isize * (first_value + nth_value) / 2)
+    n_elements as isize * (first_value + nth_value) / 2
 }
 
 // Xn = a + d(n-1)
