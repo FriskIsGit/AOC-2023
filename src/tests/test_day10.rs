@@ -34,3 +34,16 @@ fn test_demo_part2() {
     let enclosed = day10::maze2(lines);
     assert_eq!(enclosed, 4)
 }
+#[test]
+fn test_custom_part2() {
+    let lines = days::read_lines(10, InputType::Custom("custom/bigger_demo.txt".into()));
+    let enclosed = day10::maze2(lines);
+    assert_eq!(enclosed, 10)
+}
+
+#[test]
+fn test_full_part2() {
+    let lines = days::read_lines(10, InputType::Full);
+    let enclosed = day10::maze2(lines);
+    assert_eq!(enclosed, 367); // your answer is too low: 277
+}
