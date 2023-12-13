@@ -67,6 +67,14 @@ fn aoc_shell() {
                 let output = day10::maze1(input);
                 println!("Day10: {output}")
             },
+            11 => {
+                let output = day11::galaxy1(input);
+                println!("Day11: {output}")
+            },
+            13 => {
+                let output = day13::mirrors1(input);
+                println!("Day13: {output}")
+            },
             _ => eprintln!("Day{day} is not completed")
         }
     }
