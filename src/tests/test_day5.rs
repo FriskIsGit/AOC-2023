@@ -31,5 +31,5 @@ fn test_demo_part2() {
 fn test_full_part2() {
     let lines = days::read_lines(5, InputType::Full);
     let lowest_number = day5::seeds2(lines);
-    assert_eq!(lowest_number, 600279879)
+    assert_eq!(lowest_number, 20191102)
 }

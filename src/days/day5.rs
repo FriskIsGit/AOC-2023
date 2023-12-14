@@ -16,7 +16,12 @@ pub fn seeds1(lines: Vec<String>) -> usize {
         seeds.push(seed_id);
     }
     let sections = parse_sections(lines);
-    find_lowest_location_number1(seeds, sections)
+    let mut min_location = usize::MAX;
+    for seed in seeds {
+        let location = pass_through_sections(seed, &sections);
+        min_location = min(min_location, location);
+    }
+    min_location
 }
 
 fn parse_sections(lines: Vec<String>) -> Vec<Vec<MappedRange>> {
@@ -50,36 +55,21 @@ fn parse_sections(lines: Vec<String>) -> Vec<Vec<MappedRange>> {
     sections
 }
 
-fn find_lowest_location_number1(seeds: Vec<usize>, sections: Vec<Vec<MappedRange>>) -> usize {
-    let mut translations = seeds;
-    let mut next_translations = vec![];
+fn pass_through_sections(seed: usize, sections: &Vec<Vec<MappedRange>>) -> usize {
+    let mut id = seed;
     for i in 1..8 {
-        println!("{}", SECTION_NAMES[i-1]);
-        println!("{:?}", translations);
-        for id in translations {
-            let section = &sections[i];
-            // if id can correspond to any range then it must choose this range's mapping
-            // because apparently ranges don't overlap themselves and none of it is clearly stated in the problem
-            let mut corresponded_to_none = true;
-            for mapped_range in section {
-                if mapped_range.contains(id) {
-                    let dest = mapped_range.get_destination(id);
-                    next_translations.push(dest);
-                    corresponded_to_none = false;
-                    break;
-                }
-            }
-            if corresponded_to_none {
-                for mapped_range in section {
-                    let dest = mapped_range.get_destination(id);
-                    next_translations.push(dest);
-                }
+        let section = &sections[i];
+        let mut is_mapped = false;
+        for mapped_range in section {
+            if mapped_range.contains(id) {
+                let dest = mapped_range.get_destination(id);
+                id = dest;
+                is_mapped = true;
+                break;
             }
         }
-        translations = next_translations;
-        next_translations = vec![];
     }
-    *translations.iter().min().unwrap()
+    id
 }
 
 pub struct MappedRange {
@@ -123,7 +113,15 @@ pub fn seeds2(lines: Vec<String>) -> usize {
             break;
         }
     }
-    0
+    let sections = parse_sections(lines);
+    let mut min_location = usize::MAX;
+    for seed_range in seed_ranges {
+        for seed in seed_range {
+            let location = pass_through_sections(seed, &sections);
+            min_location = min(min_location, location);
+        }
+    }
+    min_location
 }
 
 
