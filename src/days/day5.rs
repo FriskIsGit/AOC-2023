@@ -121,7 +121,7 @@ pub fn seeds2(lines: Vec<String>) -> usize {
         range1.start.partial_cmp(&range2.start).unwrap()
     });
 
-    // Sort the ranges by starting exit values to iterate over ascending input
+    // Sort the ranges by exit values to iterate over ascending input
     let mut sections = parse_sections(lines);
     for i in 0..sections.len() {
         let sect = &mut sections[i];
@@ -162,7 +162,6 @@ pub fn seeds2(lines: Vec<String>) -> usize {
     let last_section = &sections[last_index]; //reborrow as immutable
     // Rather than performing a full brute force we can perform an optimized bruteforce from the back
     // Instead of passing input and getting an output, we can derive input from output
-    // This code runs 27 times slower than in release
     'input: for exit_range in last_section {
         let mut previous_delta = usize::MAX; // some arbitrary value
         let mut jump_from = 0;
