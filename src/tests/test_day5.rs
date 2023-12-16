@@ -29,7 +29,15 @@ fn test_demo_part2() {
 
 #[test]
 fn test_full_part2() {
+    // starting seed: 391_178_260
     let lines = days::read_lines(5, InputType::Full);
     let lowest_number = day5::seeds2(lines);
     assert_eq!(lowest_number, 20191102)
+}
+
+#[test]
+fn test_full_part2_other() {
+    let lines = days::read_lines(5, InputType::Custom("custom/day5.txt".into()));
+    let lowest_number = day5::seeds2(lines);
+    assert_eq!(lowest_number, 104070862)
 }

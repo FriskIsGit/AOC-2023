@@ -26,6 +26,7 @@ fn aoc_shell() {
     else if buffer.starts_with("LAUNCH") {
         let day = read_day(&buffer);
         let input = read_lines(day, InputType::Full);
+        println!("Executing");
         match day {
             1 => {
                 let sum = day1::trebuchet_1(input);
