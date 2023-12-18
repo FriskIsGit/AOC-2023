@@ -1,4 +1,4 @@
-use std::mem::swap;
+use std::cmp::max;
 use std::time::Instant;
 
 // # - cuba-shaped rocks, O - rounded rocks, . - empty space
@@ -46,18 +46,66 @@ pub fn print_table(arr: &Vec<Vec<u8>>) {
 }
 
 const CYCLES: usize = 1_000_000_000;
+const PROBE_SIZE: usize = 5;
+
 pub fn parabolic_dish2(lines: Vec<String>) -> usize {
     // Rocks move north, west, south, east = one cycle
     let mut map = parse_input(lines);
     let now = Instant::now();
-    for i in 0..CYCLES {
-        roll_north(&mut map);
-        roll_west(&mut map);
-        roll_south(&mut map);
-        roll_east(&mut map);
+    let initial_cycles = 2 * max(map.len(), map[0].len());
+    // Simulate some number of cycles to scramble the unique starting position
+    for _ in 0..initial_cycles {
+        cycle(&mut map);
     }
-    print_table(&map);
-    sum_map(&map)
+
+    let mut sum_history = Vec::with_capacity(initial_cycles);
+    // Create data to find repeating intervals
+    for _ in 0..initial_cycles {
+        cycle(&mut map);
+        sum_history.push(sum_map(&map));
+    }
+    let mut remaining_cycles = CYCLES - 2 * initial_cycles;
+    // [interval ] [interval ] [last] [fill ]
+    // [123456789] [123456789] [1234] [56789]
+    let interval_length = interval_length(&sum_history);
+    let last_interval_length = sum_history.len() % interval_length;
+    let length_to_fill = interval_length - last_interval_length;
+    remaining_cycles -= length_to_fill;
+    remaining_cycles %= interval_length;
+    // At this point the last value of the interval is our HEAD and the current state
+    let last_index = interval_length - 1;
+    let current_index = (remaining_cycles + last_index) % interval_length;
+    println!("Total load: {}", sum_history[current_index]);
+    println!("Time elapsed: {:?}", now.elapsed());
+    sum_history[current_index]
+}
+
+fn cycle(map: &mut Vec<Vec<u8>>) {
+    roll_north(map);
+    roll_west(map);
+    roll_south(map);
+    roll_east(map);
+}
+
+fn interval_length(sequence: &Vec<usize>) -> usize {
+    let mut probe_vec = Vec::with_capacity(PROBE_SIZE);
+    for i in 0..PROBE_SIZE {
+        probe_vec.push(sequence[i])
+    }
+    let mut i = PROBE_SIZE;
+    let exit_bound = sequence.len() - PROBE_SIZE;
+    while i < exit_bound {
+        if sequence[i] != probe_vec[0] {
+            i += 1;
+            continue;
+        }
+        let slice = &sequence[i..i + PROBE_SIZE];
+        if slice.iter().eq(&probe_vec) {
+            return i;
+        }
+        i += 1;
+    }
+    panic!("No interval found")
 }
 
 fn roll_north(map: &mut Vec<Vec<u8>>) {
@@ -73,10 +121,10 @@ fn roll_north(map: &mut Vec<Vec<u8>>) {
                     if resting_spot.is_some() && round_rock.is_none() {
                         round_rock = Some(row_index);
                     }
-                },
+                }
                 b'#' => {
                     resting_spot = None;
-                },
+                }
                 b'.' => {
                     if resting_spot.is_none() {
                         resting_spot = Some(row_index);
@@ -112,10 +160,10 @@ fn roll_west(map: &mut Vec<Vec<u8>>) {
                     if resting_spot.is_some() && round_rock.is_none() {
                         round_rock = Some(col_index);
                     }
-                },
+                }
                 b'#' => {
                     resting_spot = None;
-                },
+                }
                 b'.' => {
                     if resting_spot.is_none() {
                         resting_spot = Some(col_index);
@@ -151,10 +199,10 @@ fn roll_east(map: &mut Vec<Vec<u8>>) {
                     if resting_spot.is_some() && round_rock.is_none() {
                         round_rock = Some(col_index);
                     }
-                },
+                }
                 b'#' => {
                     resting_spot = None;
-                },
+                }
                 b'.' => {
                     if resting_spot.is_none() {
                         resting_spot = Some(col_index);
@@ -189,10 +237,10 @@ fn roll_south(map: &mut Vec<Vec<u8>>) {
                     if resting_spot.is_some() && round_rock.is_none() {
                         round_rock = Some(row_index);
                     }
-                },
+                }
                 b'#' => {
                     resting_spot = None;
-                },
+                }
                 b'.' => {
                     if resting_spot.is_none() {
                         resting_spot = Some(row_index);

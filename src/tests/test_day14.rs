@@ -25,5 +25,5 @@ fn test_demo_part2() {
 fn test_full_part2() {
     let lines = days::read_lines(14, InputType::Full);
     let sum = day14::parabolic_dish2(lines);
-    assert_eq!(sum, 1)
+    assert_eq!(sum, 90551)
 }
