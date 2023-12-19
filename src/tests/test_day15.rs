@@ -25,5 +25,5 @@ fn test_demo_part2() {
 fn test_full_part2() {
     let lines = days::read_lines(15, InputType::Full);
     let focus_power = day15::lens_library2(lines);
-    assert_eq!(focus_power, 1)
+    assert_eq!(focus_power, 279116)
 }
