@@ -2,15 +2,7 @@ pub fn beam1(lines: Vec<String>) -> usize {
     let map = parse_input(lines);
     // Too many arguments to pass around so it's better to create a struct
     let mut facility = Facility::new(map);
-    let start_point = Point::new(0, 0);
-    // Because AOC couldn't put an empty space at the starting point for some reason
-    match facility.map[0][0] {
-        b'.' | b'-' => facility.cast_beam(start_point, Direction::Right),
-        b'\\' | b'|' => facility.cast_beam(start_point, Direction::Down),
-        b'/' => facility.cast_beam(start_point, Direction::Up),
-        _ => {}
-    }
-
+    facility.cast_beam(Point::new(0, 0), Direction::Right, true);
     print_energized(&facility.energized);
     facility.count_energized()
 }
@@ -39,36 +31,39 @@ impl Facility {
         let energized = Self::new_bool_map(&map);
         Self { all_rows: map.len(), all_columns: map[0].len(), map, energized }
     }
-    fn cast_beam(&mut self, mut point: Point, mut direction: Direction) {
+    fn cast_beam(&mut self, mut point: Point, mut direction: Direction, mut entry_beam: bool) {
         self.energize(&point);
         loop {
-            match direction {
-                Direction::Right => {
-                    if point.col_index == self.all_columns-1 {
-                        return
+            // Can't start from negative index due to usize type
+            if !entry_beam {
+                match direction {
+                    Direction::Right => {
+                        if point.col_index == self.all_columns-1 {
+                            return
+                        }
+                        point.col_index += 1;
                     }
-                    point.col_index += 1;
-                }
-                Direction::Left => {
-                    if point.col_index == 0 {
-                        return
+                    Direction::Left => {
+                        if point.col_index == 0 {
+                            return
+                        }
+                        point.col_index -= 1;
                     }
-                    point.col_index -= 1;
-                }
-                Direction::Down => {
-                    if point.row_index == self.all_rows-1 {
-                        return
+                    Direction::Down => {
+                        if point.row_index == self.all_rows-1 {
+                            return
+                        }
+                        point.row_index += 1;
                     }
-                    point.row_index += 1;
-                }
-                Direction::Up => {
-                    if point.row_index == 0 {
-                        return
+                    Direction::Up => {
+                        if point.row_index == 0 {
+                            return
+                        }
+                        point.row_index -= 1;
                     }
-                    point.row_index -= 1;
                 }
             }
-            // Moved point
+            entry_beam = false;
             match self.map[point.row_index][point.col_index] {
                 b'|' => {
                     if self.is_energized(&point) {
@@ -76,8 +71,8 @@ impl Facility {
                     }
                     match direction {
                         Direction::Right | Direction::Left => {
-                            self.cast_beam(point.clone(), Direction::Up);
-                            self.cast_beam(point.clone(), Direction::Down);
+                            self.cast_beam(point.clone(), Direction::Up, false);
+                            self.cast_beam(point.clone(), Direction::Down, false);
                             return;
                         }
                         Direction::Down | Direction::Up => {}
@@ -90,8 +85,8 @@ impl Facility {
                     match direction {
                         Direction::Right | Direction::Left => {}
                         Direction::Down | Direction::Up => {
-                            self.cast_beam(point.clone(), Direction::Left);
-                            self.cast_beam(point.clone(), Direction::Right);
+                            self.cast_beam(point.clone(), Direction::Left, false);
+                            self.cast_beam(point.clone(), Direction::Right, false);
                             return;
                         }
                     }
@@ -115,6 +110,7 @@ impl Facility {
                 b'.' => {},
                 _ => panic!("What {}", self.map[point.row_index][point.col_index])
             }
+
             self.energize(&point); // always energize
         }
     }
@@ -162,4 +158,47 @@ pub fn parse_input(mut lines: Vec<String>) -> Vec<Vec<u8>> {
         map.push(taken_line.into_bytes());
     }
     map
+}
+
+pub fn beam2(lines: Vec<String>) -> usize {
+    let map = parse_input(lines);
+    let mut max = 0;
+    // Left side
+    for row in 0..map.len() {
+        let mut facility = Facility::new(map.clone());
+        let start_point = Point::new(row, 0);
+        facility.cast_beam(start_point, Direction::Right, true);
+        max = std::cmp::max(facility.count_energized(), max);
+    }
+    // LEFT => RIGHT
+    for row in 0..map.len() {
+        let mut facility = Facility::new(map.clone());
+        let start_point = Point::new(row, 0);
+        facility.cast_beam(start_point, Direction::Right, true);
+        max = std::cmp::max(facility.count_energized(), max);
+    }
+    // LEFT <= RIGHT
+    for row in 0..map.len() {
+        let mut facility = Facility::new(map.clone());
+        let start_point = Point::new(row, facility.all_columns-1);
+        facility.cast_beam(start_point, Direction::Left, true);
+        max = std::cmp::max(facility.count_energized(), max);
+    }
+    let columns = map[0].len();
+    // v DOWN v
+    for starting_column in 0..columns {
+        let mut facility = Facility::new(map.clone());
+        let start_point = Point::new(0, starting_column);
+        facility.cast_beam(start_point, Direction::Down, true);
+        max = std::cmp::max(facility.count_energized(), max);
+    }
+    // ^ UP ^
+    for starting_column in 0..columns {
+        let mut facility = Facility::new(map.clone());
+        let start_point = Point::new(facility.all_rows-1, starting_column);
+        facility.cast_beam(start_point, Direction::Up, true);
+        max = std::cmp::max(facility.count_energized(), max);
+    }
+    println!("Most energized: {max}");
+    max
 }

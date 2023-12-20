@@ -6,7 +6,7 @@ mod days;
 fn main() {
     println!("Advent of Code shell:");
     loop {
-        aoc_shell();
+        aoc_shell()
     }
 }
 
@@ -75,6 +75,18 @@ fn aoc_shell() {
             13 => {
                 let output = day13::mirrors1(input);
                 println!("Day13: {output}")
+            },
+            14 => {
+                let output = day14::parabolic_dish1(input);
+                println!("Day14: {output}")
+            },
+            15 => {
+                let output = day15::lens_library1(input);
+                println!("Day15: {output}")
+            },
+            16 => {
+                let output = day16::beam1(input);
+                println!("Day16: {output}")
             },
             _ => eprintln!("Day{day} is not completed")
         }
