@@ -2,8 +2,30 @@ pub fn beam1(lines: Vec<String>) -> usize {
     let map = parse_input(lines);
     // Too many arguments to pass around so it's better to create a struct
     let mut facility = Facility::new(map);
-    facility.cast_beam(Point::new(0, 0), Direction::Right);
+    let start_point = Point::new(0, 0);
+    // Because AOC couldn't put an empty space at the starting point for some reason
+    match facility.map[0][0] {
+        b'.' | b'-' => facility.cast_beam(start_point, Direction::Right),
+        b'\\' | b'|' => facility.cast_beam(start_point, Direction::Down),
+        b'/' => facility.cast_beam(start_point, Direction::Up),
+        _ => {}
+    }
+
+    print_energized(&facility.energized);
     facility.count_energized()
+}
+
+fn print_energized(energized: &Vec<Vec<bool>>) {
+    for row in energized {
+        for val in row {
+            if *val {
+                print!("#");
+            } else {
+                print!(".");
+            }
+        }
+        println!();
+    }
 }
 
 pub struct Facility {
@@ -18,6 +40,7 @@ impl Facility {
         Self { all_rows: map.len(), all_columns: map[0].len(), map, energized }
     }
     fn cast_beam(&mut self, mut point: Point, mut direction: Direction) {
+        self.energize(&point);
         loop {
             match direction {
                 Direction::Right => {
@@ -48,20 +71,28 @@ impl Facility {
             // Moved point
             match self.map[point.row_index][point.col_index] {
                 b'|' => {
+                    if self.is_energized(&point) {
+                        return;
+                    }
                     match direction {
                         Direction::Right | Direction::Left => {
                             self.cast_beam(point.clone(), Direction::Up);
                             self.cast_beam(point.clone(), Direction::Down);
+                            return;
                         }
                         Direction::Down | Direction::Up => {}
                     }
                 }
                 b'-' => {
+                    if self.is_energized(&point) {
+                        return;
+                    }
                     match direction {
                         Direction::Right | Direction::Left => {}
                         Direction::Down | Direction::Up => {
                             self.cast_beam(point.clone(), Direction::Left);
                             self.cast_beam(point.clone(), Direction::Right);
+                            return;
                         }
                     }
                 }
@@ -84,11 +115,14 @@ impl Facility {
                 b'.' => {},
                 _ => panic!("What {}", self.map[point.row_index][point.col_index])
             }
-            self.energize(&point);
+            self.energize(&point); // always energize
         }
     }
     fn energize(&mut self, point: &Point) {
         self.energized[point.row_index][point.col_index] = true;
+    }
+    fn is_energized(&self, point: &Point) -> bool {
+        self.energized[point.row_index][point.col_index]
     }
     fn count_energized(&self) -> usize {
         let mut count = 0;
