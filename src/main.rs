@@ -6,7 +6,7 @@ mod days;
 fn main() {
     println!("Advent of Code shell:");
     loop {
-        aoc_shell()
+        aoc_shell();
     }
 }
 
