@@ -29,3 +29,9 @@ fn test_full_part2() {
     let id_sum = day2::conundrum_2(lines);
     assert_eq!(id_sum, 77021)
 }
+#[test]
+fn test_full_custom_p1() {
+    let lines = days::read_lines(2, InputType::Custom("custom/day2.txt".into()));
+    let id_sum = day2::conundrum_1(lines);
+    assert_eq!(id_sum, 2101)
+}

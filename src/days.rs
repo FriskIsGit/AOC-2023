@@ -32,7 +32,6 @@ pub enum InputType {
     DemoPart1,
     DemoPart2,
     Full,
-    #[warn(dead_code)]
     Custom(String),
 }
 
