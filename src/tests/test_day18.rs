@@ -8,7 +8,7 @@ fn test_demo_part1() {
 }
 #[test]
 fn custom_test_part1() {
-    let lines = days::read_lines(18, InputType::Custom("custom/day18_p1.txt".into()));
+    let lines = days::read_lines(18, InputType::Custom("day18_p1.txt"));
     let cubic_meters = day18::lagoon1(lines);
     assert_eq!(cubic_meters, 111)
 }

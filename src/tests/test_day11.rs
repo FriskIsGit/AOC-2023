@@ -32,7 +32,7 @@ fn test_full_part2() {
 
 #[test]
 fn test_custom_part2() {
-    let lines = days::read_lines(11, InputType::Custom("custom/simple_galaxy.txt".into()));
+    let lines = days::read_lines(11, InputType::Custom("simple_galaxy.txt"));
     let distance_sum = day11::galaxy2(lines);
     assert_eq!(distance_sum, 1000001)
 }
@@ -41,7 +41,7 @@ fn test_custom_part2() {
 fn galaxy_transformation() {
     let demo_lines = days::read_lines(11, InputType::DemoPart1);
     let galaxy = day11::parse_input(demo_lines, true);
-    let correct_transform_input = InputType::Custom("custom/expanded_galaxy.txt".into());
+    let correct_transform_input = InputType::Custom("expanded_galaxy.txt");
     let expanded_lines = days::read_lines(11, correct_transform_input);
     assert_eq!(galaxy.len(), expanded_lines.len());
     assert_eq!(galaxy[0].len(), expanded_lines[0].len());

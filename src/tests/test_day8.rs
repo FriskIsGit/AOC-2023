@@ -9,7 +9,7 @@ fn test_demo_part1() {
 }
 #[test]
 fn test_custom() {
-    let lines = days::read_lines(8, InputType::Custom("custom/two_step.txt".into()));
+    let lines = days::read_lines(8, InputType::Custom("two_step.txt"));
     let steps = day8::wasteland1(lines);
     assert_eq!(steps, 2)
 }

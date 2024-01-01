@@ -31,14 +31,14 @@ fn test_full_part2() {
 
 #[test]
 fn test_faulty_mirror() {
-    let lines = days::read_lines(13, InputType::Custom("custom/faulty_mirror.txt".into()));
+    let lines = days::read_lines(13, InputType::Custom("faulty_mirror.txt"));
     let sum = day13::mirrors1(lines);
     assert_eq!(sum > 0, true)
 }
 
 #[test]
 fn single_mirror_parse_test() {
-    let lines = days::read_lines(13, InputType::Custom("custom/faulty_mirror.txt".into()));
+    let lines = days::read_lines(13, InputType::Custom("faulty_mirror.txt"));
     let mirrors = day13::parse_input(lines);
     assert_eq!(mirrors.len(), 1);
 }

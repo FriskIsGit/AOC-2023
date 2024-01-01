@@ -9,7 +9,7 @@ pub fn read_contents(day: u32, input: InputType) -> String {
         InputType::DemoPart1 => format!("./demo_p1/demo{day}.txt"),
         InputType::DemoPart2 => format!("./demo_p2/demo{day}.txt"),
         InputType::Full => format!("./full/input{day}.txt"),
-        InputType::Custom(file_path) => file_path,
+        InputType::Custom(file_name) => format!("./custom/{file_name}"),
     };
     let content = match read_to_string(&path) {
         Ok(content) => content,
@@ -32,7 +32,7 @@ pub enum InputType {
     DemoPart1,
     DemoPart2,
     Full,
-    Custom(String),
+    Custom(&'static str),
 }
 
 pub mod day1;

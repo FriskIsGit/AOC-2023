@@ -31,7 +31,7 @@ fn test_full_part2() {
 
 #[test]
 fn test_custom_part2() {
-    let lines = days::read_lines(3, InputType::Custom("custom/minimal.txt".into()));
+    let lines = days::read_lines(3, InputType::Custom("minimal.txt"));
     let gear_sum = day3::gear_ratios2(lines);
     assert_eq!(gear_sum, 48708 + 6)
 }

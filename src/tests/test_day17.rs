@@ -16,7 +16,7 @@ fn test_full_part1() {
 
 #[test]
 fn test_custom_part1() {
-    let lines = days::read_lines(17, InputType::Custom("custom/custom17.txt".into()));
+    let lines = days::read_lines(17, InputType::Custom("custom1.txt"));
     let heat_loss = day17::crucible1(lines);
     assert_eq!(heat_loss, 1)
 }

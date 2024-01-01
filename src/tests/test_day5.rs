@@ -16,7 +16,7 @@ fn test_full_part1() {
 
 #[test]
 fn custom_part1() {
-    let lines = days::read_lines(5, InputType::Custom("custom/one_seed1.txt".into()));
+    let lines = days::read_lines(5, InputType::Custom("one_seed1.txt"));
     let lowest_number = day5::seeds1(lines);
     assert_eq!(lowest_number, 46)
 }
@@ -37,7 +37,7 @@ fn test_full_part2() {
 
 #[test]
 fn test_full_part2_other() {
-    let lines = days::read_lines(5, InputType::Custom("custom/day5.txt".into()));
+    let lines = days::read_lines(5, InputType::Custom("day5.txt"));
     let lowest_number = day5::seeds2(lines);
     assert_eq!(lowest_number, 104070862)
 }

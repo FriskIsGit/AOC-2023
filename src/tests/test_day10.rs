@@ -16,7 +16,7 @@ fn test_full_part1() {
 
 #[test]
 fn test_custom_part1() {
-    let lines = days::read_lines(10, InputType::Custom("custom/simple_pipe.txt".into()));
+    let lines = days::read_lines(10, InputType::Custom("simple_pipe.txt"));
     let farthest_pos = day10::maze1(lines);
     assert_eq!(farthest_pos, 4)
 }
@@ -36,7 +36,7 @@ fn test_demo_part2() {
 }
 #[test]
 fn test_custom_part2() {
-    let lines = days::read_lines(10, InputType::Custom("custom/bigger_demo.txt".into()));
+    let lines = days::read_lines(10, InputType::Custom("bigger_demo.txt"));
     let enclosed = day10::maze2(lines);
     assert_eq!(enclosed, 10)
 }
