@@ -89,6 +89,63 @@ fn find_workflow(workflows: &Vec<Workflow>, name: &str) -> Option<usize> {
     None
 }
 
+fn simplify_workflows(workflows: &mut Vec<Workflow>) {
+    loop {
+        let mut removed_count = 0;
+        for workflow in workflows.iter_mut() {
+            workflow.simplify_rules();
+        }
+        let mut i = 0;
+        while i < workflows.len() {
+            let workflow = &workflows[i];
+            if workflow.rules.len() > 1 {
+                i += 1;
+                continue
+            }
+
+            let mut removed = false;
+            let only_rule = &workflow.rules[0];
+            match only_rule {
+                Rule::Accepted | Rule::Rejected => {
+                    removed_count += 1;
+                    replace_workflow_with(workflows, workflow.name.clone(), only_rule.clone());
+                    workflows.remove(i);
+                    removed = true;
+                }
+                Rule::Condition(_) | Rule::Send(_) => {}
+            }
+            if !removed {
+                i += 1;
+            }
+        }
+        println!("removed_count {removed_count}");
+        if removed_count == 0 {
+            break;
+        }
+    }
+}
+
+fn replace_workflow_with(workflows: &mut Vec<Workflow>, removable_workflow: String, rule: Rule) {
+    for target_workflow in workflows {
+        for target_rule in target_workflow.rules.iter_mut() {
+            match target_rule {
+                Rule::Condition(cond) => {
+                    if cond.send_to != *removable_workflow {
+                        continue
+                    }
+                    cond.send_to = match rule {
+                        Rule::Accepted => "A".to_string(),
+                        Rule::Rejected => "R".to_string(),
+                        _ => panic!("No other options expected"),
+                    };
+                    break;
+                },
+                _ => {}
+            }
+        }
+    }
+}
+
 fn parse_workflows(lines: &Vec<String>) -> (Vec<Workflow>, usize) {
     let mut workflows = Vec::with_capacity(12);
     let mut empty_index = 0;
@@ -143,10 +200,88 @@ impl Workflow {
     pub fn new(name: String, rules: Vec<Rule>) -> Self {
         Self { name, rules }
     }
+    // Remove conditions defaulting to the same outcome
+    pub fn simplify_rules(&mut self) {
+        self.simplify_accepted();
+        self.simplify_rejected();
+    }
+    fn simplify_accepted(&mut self) {
+        if self.rules.len() < 2 || *self.rules.last().unwrap() != Rule::Accepted {
+            return
+        }
+        let mut last_index = self.rules.len()-1;
+        let mut last_valid_index = None;
+        for i in (0..=last_index).rev() {
+            match &self.rules[i] {
+                Rule::Condition(cond) => {
+                    match cond.get_result() {
+                        Rule::Send(_) | Rule::Rejected => {
+                            last_valid_index = Some(i+1);
+                            break;
+                        }
+                        Rule::Accepted => {
+                            continue
+                        }
+                        Rule::Condition(_) => panic!("Unreachable")
+                    }
+                }
+                Rule::Send(_) | Rule::Rejected => {
+                    last_valid_index = Some(i+1);
+                    break;
+                }
+                Rule::Accepted => {
+                    continue
+                }
+            }
+        }
+        if let Some(index) = last_valid_index {
+            unsafe { self.rules.set_len(index + 1) }
+        } else {
+            self.rules.clear();
+            self.rules.push(Rule::Accepted);
+        }
+    }
+    pub fn simplify_rejected(&mut self) {
+        if self.rules.len() < 2 || *self.rules.last().unwrap() != Rule::Rejected {
+            return
+        }
+        let mut last_index = self.rules.len()-1;
+        let mut last_valid_index = None;
+        for i in (0..=last_index).rev() {
+            match &self.rules[i] {
+                Rule::Condition(cond) => {
+                    match cond.get_result() {
+                        Rule::Send(_) | Rule::Accepted => {
+                            last_valid_index = Some(i+1);
+                            break;
+                        }
+                        Rule::Rejected => {
+                            continue
+                        }
+                        Rule::Condition(_) => panic!("Unreachable")
+                    }
+                }
+                Rule::Send(_) | Rule::Accepted => {
+                    last_valid_index = Some(i+1);
+                    break;
+                }
+                Rule::Rejected => {
+                    continue
+                }
+            }
+        }
+        if let Some(index) = last_valid_index {
+            unsafe { self.rules.set_len(index + 1) }
+        } else {
+            self.rules.clear();
+            self.rules.push(Rule::Rejected);
+        }
+    }
 }
 
 type WorkflowName = String;
 
+#[derive(PartialEq, Clone)]
 pub enum Rule {
     Condition(Condition),
     Send(WorkflowName),
@@ -164,6 +299,7 @@ impl Display for Rule {
         formatter.write_str(&str)
     }
 }
+#[derive(PartialEq, Clone)]
 pub struct Condition {
     category: u8,
     is_more: bool,
@@ -214,17 +350,47 @@ impl Rating {
 const MAX_VALUE: usize = 4000;
 const MIN_VALUE: usize = 1;
 pub fn aplenty2(lines: Vec<String>) -> usize {
-    let (workflows, _) = parse_workflows(&lines);
+    let (mut workflows, _) = parse_workflows(&lines);
+    println!("Initial count: {}", workflows.len());
+    simplify_workflows(&mut workflows);
+    println!("After count: {}", workflows.len());
+    println!("--------------");
+    for workflow in &workflows {
+        if workflow.rules.len() == 0 {
+            println!("EMPTY RULES");
+            continue
+        }
+        for rule in &workflow.rules {
+            print!("{rule} ")
+        }
+        println!()
+    }
+
     let st_index = find_workflow(&workflows, "in").expect("Nowhere to start");
     println!("Possible combinations: {}", max_possible_combinations());
-    let mut current_workflow = &workflows[st_index];
+    let mut workflow = &workflows[st_index];
     let mut combinations = 0;
-    for rule in &current_workflow.rules {
+    for rule in &workflow.rules {
 
     }
     combinations
 }
 pub fn max_possible_combinations() -> usize {
     MAX_VALUE * MAX_VALUE * MAX_VALUE * MAX_VALUE
+}
+
+pub struct Parts {
+    pub x: usize,
+    pub m: usize,
+    pub a: usize,
+    pub s: usize,
+}
+impl Parts {
+    pub fn new() -> Self {
+        Self { x: 0, m: 0, a: 0, s: 0 }
+    }
+    pub fn combinations(&self) -> usize {
+        self.x * self.m * self.a * self.s
+    }
 }
 

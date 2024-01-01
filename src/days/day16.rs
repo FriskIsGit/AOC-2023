@@ -163,13 +163,6 @@ pub fn parse_input(mut lines: Vec<String>) -> Vec<Vec<u8>> {
 pub fn beam2(lines: Vec<String>) -> usize {
     let map = parse_input(lines);
     let mut max = 0;
-    // Left side
-    for row in 0..map.len() {
-        let mut facility = Facility::new(map.clone());
-        let start_point = Point::new(row, 0);
-        facility.cast_beam(start_point, Direction::Right, true);
-        max = std::cmp::max(facility.count_energized(), max);
-    }
     // LEFT => RIGHT
     for row in 0..map.len() {
         let mut facility = Facility::new(map.clone());
