@@ -1,5 +1,6 @@
-use std::cmp::max;
+use std::cmp::{max, min};
 use std::fmt::{Display, Formatter};
+use std::time::Instant;
 use crate::days::day18::Intersection::{Horizontal, Vertical};
 
 // The same blocks are never mined twice - predicate that makes most of these methods valid
@@ -203,7 +204,7 @@ impl Dig {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-enum Direction {
+pub enum Direction {
     Up,
     Down,
     Left,
@@ -219,8 +220,8 @@ fn print_map(map: &Vec<Vec<u8>>) {
     }
 }
 
-const PARTITIONS: usize = 200;
-// TODO Improvements:
+const PARTITIONS_OPTIMAL: usize = 1400;
+// TODO Improvements: Detect repeating lengths
 pub fn lagoon2(lines: Vec<String>) -> usize {
     let digs = parse_input(lines, true);
     let mut bounds = DigBounds::from(&digs);
@@ -233,12 +234,14 @@ pub fn lagoon2(lines: Vec<String>) -> usize {
     }
     let height = bounds.height();
     let width = bounds.width();
-    let partition_size = height / PARTITIONS;
+    let partitions = PARTITIONS_OPTIMAL;
+    let partition_size = height / partitions;
     println!("height:{height} width:{width}");
     println!("partition_size:{partition_size}");
     println!("segments.len():{}", segments.len());
-    let mut sections: Vec<Vec<&LineSegment>> = vec![vec![]; PARTITIONS+1];
-    println!("PARTITIONS:{PARTITIONS}; sections.len(): {}", sections.len());
+    let mut sections: Vec<Vec<&LineSegment>> = vec![vec![]; partitions +1];
+    println!("PARTITIONS:{partitions}; sections.len(): {}", sections.len());
+    let now = Instant::now();
     let mut sect_st = 0;
     // Assign segments to sections
     for section in sections.iter_mut() {
@@ -410,6 +413,8 @@ pub fn lagoon2(lines: Vec<String>) -> usize {
         intersections.clear();
     }
     println!("Interior:{interior}");
+    let end = now.elapsed();
+    println!("Time elapsed: {:?}", end);
     interior + all_digs
 }
 
