@@ -1,8 +1,10 @@
 use std::fmt::{Display, Formatter};
 
 pub fn aplenty1(lines: Vec<String>) -> usize {
-    let (workflows, empty_index) = parse_workflows(&lines);
+    let (mut workflows, empty_index) = parse_workflows(&lines);
+    simplify_workflows(&mut workflows); // Part_sum 6924
     let parts = parse_parts(lines, empty_index);
+    println!("Parts count: {}", parts.len());
     let st_index = find_workflow(&workflows, "in").expect("Nowhere to start");
     let mut total_sum = 0;
     let mut current_workflow = &workflows[st_index];
@@ -12,16 +14,22 @@ pub fn aplenty1(lines: Vec<String>) -> usize {
         let ratings = &parts[part_index];
         let mut part_sum = 0;
         let mut next_part = true;
-        for rule in &current_workflow.rules {
+        let mut rule_index = 0;
+        while rule_index < current_workflow.rules.len() {
+            let rule = &current_workflow.rules[rule_index];
+            // println!("{part_index} Workflow name: {}", current_workflow.name);
             match rule {
                 Rule::Condition(cond) => {
-                    let rating = ratings.iter().find(|x| x.category == cond.category).expect("No category");
+                    let rating = ratings.iter().find(|x| x.category == cond.category)
+                        .expect("No category");
                     if !cond.satisfies(rating.value) {
+                        rule_index += 1;
                         continue
                     }
                     match cond.get_result() {
                         Rule::Send(send_to) => {
-                            let i = find_workflow(&workflows, &send_to).expect("Workflow not found");
+                            let i = find_workflow(&workflows, &send_to)
+                                .expect(&format!("Workflow {send_to} not found"));
                             current_workflow = &workflows[i];
                             next_part = false;
                             break;
@@ -39,7 +47,8 @@ pub fn aplenty1(lines: Vec<String>) -> usize {
                     }
                 }
                 Rule::Send(send_to) => {
-                    let i = find_workflow(&workflows, &send_to).expect("Workflow not found");
+                    let i = find_workflow(&workflows, &send_to)
+                        .expect(&format!("Workflow {send_to} not found"));
                     current_workflow = &workflows[i];
                     next_part = false;
                     break;
@@ -108,6 +117,7 @@ fn simplify_workflows(workflows: &mut Vec<Workflow>) {
             match only_rule {
                 Rule::Accepted | Rule::Rejected => {
                     removed_count += 1;
+                    println!("Removing workflow \"{}\"", workflow.name);
                     replace_workflow_with(workflows, workflow.name.clone(), only_rule.clone());
                     workflows.remove(i);
                     removed = true;
@@ -125,6 +135,17 @@ fn simplify_workflows(workflows: &mut Vec<Workflow>) {
     }
 }
 
+fn print_workflows(workflows: &Vec<Workflow>) {
+    for workflow in workflows {
+        print!("{}= ", workflow.name);
+        for rule in &workflow.rules {
+            print!("{rule} ")
+        }
+        println!()
+    }
+}
+
+// Substitutes a workflow with a rule
 fn replace_workflow_with(workflows: &mut Vec<Workflow>, removable_workflow: String, rule: Rule) {
     for target_workflow in workflows {
         for target_rule in target_workflow.rules.iter_mut() {
@@ -140,6 +161,13 @@ fn replace_workflow_with(workflows: &mut Vec<Workflow>, removable_workflow: Stri
                     };
                     break;
                 },
+                Rule::Send(workflow_name) => {
+                    if *workflow_name != removable_workflow {
+                        continue
+                    }
+                    *target_rule = rule.clone();
+                    break;
+                }
                 _ => {}
             }
         }
@@ -192,8 +220,8 @@ fn parse_workflows(lines: &Vec<String>) -> (Vec<Workflow>, usize) {
 }
 
 pub struct Workflow {
-    name: String,
-    rules: Vec<Rule>,
+    pub name: String,
+    pub rules: Vec<Rule>,
 }
 
 impl Workflow {
@@ -235,11 +263,11 @@ impl Workflow {
             }
         }
         if let Some(index) = last_valid_index {
-            unsafe { self.rules.set_len(index + 1) }
+            unsafe { self.rules.set_len(index) }
         } else {
             self.rules.clear();
-            self.rules.push(Rule::Accepted);
         }
+        self.rules.push(Rule::Accepted);
     }
     pub fn simplify_rejected(&mut self) {
         if self.rules.len() < 2 || *self.rules.last().unwrap() != Rule::Rejected {
@@ -270,12 +298,13 @@ impl Workflow {
                 }
             }
         }
+        // println!("last_valid_index:{:?}", last_valid_index);
         if let Some(index) = last_valid_index {
-            unsafe { self.rules.set_len(index + 1) }
+            unsafe { self.rules.set_len(index) }
         } else {
             self.rules.clear();
-            self.rules.push(Rule::Rejected);
         }
+        self.rules.push(Rule::Rejected);
     }
 }
 
@@ -292,7 +321,7 @@ impl Display for Rule {
     fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
         let str = match self {
             Rule::Condition(condition) => format!("{condition}"),
-            Rule::Send(send_to) => format!("Send to {send_to}"),
+            Rule::Send(send_to) => format!("SendTo:{send_to}"),
             Rule::Accepted => "Accepted".to_string(),
             Rule::Rejected => "Rejected".to_string()
         };
@@ -354,18 +383,7 @@ pub fn aplenty2(lines: Vec<String>) -> usize {
     println!("Initial count: {}", workflows.len());
     simplify_workflows(&mut workflows);
     println!("After count: {}", workflows.len());
-    println!("--------------");
-    for workflow in &workflows {
-        if workflow.rules.len() == 0 {
-            println!("EMPTY RULES");
-            continue
-        }
-        for rule in &workflow.rules {
-            print!("{rule} ")
-        }
-        println!()
-    }
-
+    print_workflows(&workflows);
     let st_index = find_workflow(&workflows, "in").expect("Nowhere to start");
     println!("Possible combinations: {}", max_possible_combinations());
     let mut workflow = &workflows[st_index];
