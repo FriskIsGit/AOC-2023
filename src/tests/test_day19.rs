@@ -1,3 +1,4 @@
+use std::ops::RangeInclusive;
 use crate::days::{self, day19, InputType};
 use crate::days::day19::{Condition, Rule, Workflow};
 
@@ -33,7 +34,7 @@ fn test_demo_part2() {
 fn test_full_part2() {
     let lines = days::read_lines(19, InputType::Full);
     let output = day19::aplenty2(lines);
-    assert_eq!(output, 1)
+    assert_eq!(output, 124831893423809)
 }
 
 #[test]
@@ -42,6 +43,12 @@ fn test_rev() {
     for i in (0..5-1).rev() {
         println!("{}", vec[i])
     }
+}
+#[test]
+fn simple_workflows_part2() {
+    let lines = days::read_lines(19, InputType::Custom("simple_workflows.txt"));
+    let output = day19::aplenty2(lines);
+    assert_eq!(output, 128704000000000)
 }
 #[test]
 fn workflow_test() {

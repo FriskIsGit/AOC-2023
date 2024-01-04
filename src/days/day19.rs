@@ -1,11 +1,11 @@
-use std::fmt::{Display, Formatter};
+use std::fmt::{Display, format, Formatter, Write};
 
 pub fn aplenty1(lines: Vec<String>) -> usize {
     let (mut workflows, empty_index) = parse_workflows(&lines);
     simplify_workflows(&mut workflows); // Part_sum 6924
     let parts = parse_parts(lines, empty_index);
     println!("Parts count: {}", parts.len());
-    let st_index = find_workflow(&workflows, "in").expect("Nowhere to start");
+    let st_index = find_workflow("in", &workflows).expect("Nowhere to start");
     let mut total_sum = 0;
     let mut current_workflow = &workflows[st_index];
 
@@ -28,7 +28,7 @@ pub fn aplenty1(lines: Vec<String>) -> usize {
                     }
                     match cond.get_result() {
                         Rule::Send(send_to) => {
-                            let i = find_workflow(&workflows, &send_to)
+                            let i = find_workflow(&send_to, &workflows)
                                 .expect(&format!("Workflow {send_to} not found"));
                             current_workflow = &workflows[i];
                             next_part = false;
@@ -47,7 +47,7 @@ pub fn aplenty1(lines: Vec<String>) -> usize {
                     }
                 }
                 Rule::Send(send_to) => {
-                    let i = find_workflow(&workflows, &send_to)
+                    let i = find_workflow(&send_to, &workflows)
                         .expect(&format!("Workflow {send_to} not found"));
                     current_workflow = &workflows[i];
                     next_part = false;
@@ -89,7 +89,7 @@ fn parse_parts(lines: Vec<String>, empty_index: usize) -> Vec<Vec<Rating>> {
     parts
 }
 
-fn find_workflow(workflows: &Vec<Workflow>, name: &str) -> Option<usize> {
+fn find_workflow(name: &str, workflows: &Vec<Workflow>) -> Option<usize> {
     for (i, workflow) in workflows.iter().enumerate() {
         if workflow.name == name {
             return Some(i);
@@ -376,39 +376,228 @@ impl Rating {
     }
 }
 
-const MAX_VALUE: usize = 4000;
-const MIN_VALUE: usize = 1;
 pub fn aplenty2(lines: Vec<String>) -> usize {
     let (mut workflows, _) = parse_workflows(&lines);
-    println!("Initial count: {}", workflows.len());
     simplify_workflows(&mut workflows);
-    println!("After count: {}", workflows.len());
     print_workflows(&workflows);
-    let st_index = find_workflow(&workflows, "in").expect("Nowhere to start");
     println!("Possible combinations: {}", max_possible_combinations());
-    let mut workflow = &workflows[st_index];
-    let mut combinations = 0;
-    for rule in &workflow.rules {
-
-    }
-    combinations
+    let mut combinations = Accumulator { sum: 0 };
+    walk_workflow("in", &workflows, Parts::new(), &mut combinations);
+    combinations.sum
 }
+
+fn walk_workflow(name: &str, workflows: &Vec<Workflow>, mut parts: Parts, acc: &mut Accumulator) {
+    let i = find_workflow(&name, &workflows)
+        .expect(&format!("Workflow {name} not found"));
+    println!("Workflow: {name} | {parts}");
+    let workflow = &workflows[i];
+    let mut rule_index = 0;
+    while rule_index < workflow.rules.len() {
+        let rule = &workflow.rules[rule_index];
+        match rule {
+            Rule::Condition(cond) => {
+                // - completely invalid range
+                // - can be sliced to be valid partially 323-644 > 500
+                // - fully valid range
+                let range = match cond.category {
+                    b'x' => &parts.x,
+                    b'm' => &parts.m,
+                    b'a' => &parts.a,
+                    b's' => &parts.s,
+                    _ => panic!("Unrecognized category")
+                };
+                let mut fully_valid = false;
+                if !range.contains(cond.const_value) {
+                    if cond.is_more {
+                        // fully valid: 3530-4000 > 2000
+                        if range.start > cond.const_value {
+                            fully_valid = true;
+                        }
+                        else {
+                            // fully invalid: 323-644 > 1000
+                            rule_index += 1;
+                            continue
+                        }
+                    } else {
+                        // fully valid: 323-644 < 2000
+                        if range.end < cond.const_value {
+                            fully_valid = true;
+                        }
+                        else {
+                            // fully invalid: 3533-3900 < 2000
+                            rule_index += 1;
+                            continue
+                        }
+                    }
+                    // if at this point fully_valid==false there's something wrong
+                }
+
+                match cond.get_result() {
+                    Rule::Send(send_to) => {
+                        if fully_valid {
+                            walk_workflow(&send_to, workflows, parts.clone(), acc);
+                        } else {
+                            let (range1, range2) = range.split_at(
+                                cond.is_more, cond.const_value
+                            );
+                            let mut shrunk_parts = parts.clone();
+                            // split parts before passing based on is_more flag
+                            if cond.is_more {
+                                shrunk_parts.set_range(cond.category, range2);
+                                parts.set_range(cond.category, range1);
+                                walk_workflow(&send_to, workflows, shrunk_parts, acc);
+                            } else {
+                                shrunk_parts.set_range(cond.category, range1);
+                                parts.set_range(cond.category, range2);
+                                walk_workflow(&send_to, workflows, shrunk_parts, acc);
+                            }
+                        }
+                    }
+                    Rule::Accepted => {
+                        if fully_valid {
+                            acc.sum += parts.combinations();
+                            break;
+                        } else {
+                            let (range1, range2) = range.split_at(
+                                cond.is_more, cond.const_value
+                            );
+                            let mut shrunk_parts = parts.clone();
+                            if cond.is_more {
+                                shrunk_parts.set_range(cond.category, range2);
+                                acc.sum += shrunk_parts.combinations();
+                                println!("Accepted: {shrunk_parts}");
+                                parts.set_range(cond.category, range1);
+                            } else {
+                                shrunk_parts.set_range(cond.category, range1);
+                                acc.sum += shrunk_parts.combinations();
+                                println!("Accepted: {shrunk_parts}");
+                                parts.set_range(cond.category, range2);
+                            }
+                        }
+                    }
+                    Rule::Rejected => {
+                        if fully_valid {
+                            break;
+                        } else {
+                            let (range1, range2) = range.split_at(
+                                cond.is_more, cond.const_value
+                            );
+                            if cond.is_more {
+                                parts.set_range(cond.category, range1);
+                            } else {
+                                parts.set_range(cond.category, range2);
+                            }
+                        }
+                    }
+                    Rule::Condition(_) => panic!("Unreachable: Condition within condition.")
+                }
+            }
+            Rule::Send(send_to) => {
+                walk_workflow(&send_to, workflows, parts, acc);
+                break;
+            }
+            Rule::Accepted => {
+                acc.sum += parts.combinations();
+                println!("Accepted: {parts}");
+                break;
+            }
+            Rule::Rejected => {
+                break;
+            }
+        }
+        rule_index += 1;
+    }
+}
+
 pub fn max_possible_combinations() -> usize {
     MAX_VALUE * MAX_VALUE * MAX_VALUE * MAX_VALUE
 }
 
+#[derive(Clone)]
 pub struct Parts {
-    pub x: usize,
-    pub m: usize,
-    pub a: usize,
-    pub s: usize,
+    pub x: Range,
+    pub m: Range,
+    pub a: Range,
+    pub s: Range,
 }
 impl Parts {
     pub fn new() -> Self {
-        Self { x: 0, m: 0, a: 0, s: 0 }
+        Self {
+            x: Range::default(),
+            m: Range::default(),
+            a: Range::default(),
+            s: Range::default()
+        }
+    }
+    pub fn set_range(&mut self, name: u8, range: Range) {
+        match name {
+            b'x' => self.x = range,
+            b'm' => self.m = range,
+            b'a' => self.a = range,
+            b's' => self.s = range,
+            _ => panic!("Only x, m, a and s are accepted")
+        }
     }
     pub fn combinations(&self) -> usize {
-        self.x * self.m * self.a * self.s
+        self.x.length() * self.m.length() * self.a.length() * self.s.length()
     }
+}
+impl Display for Parts {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
+        let str = format!("x:{} m:{} a:{} s:{}", self.x, self.m, self.a, self.s);
+        formatter.write_str(&str)
+    }
+}
+const MAX_VALUE: usize = 4000;
+const MIN_VALUE: usize = 1;
+#[derive(Clone)]
+pub struct Range {
+    // both start and end are inclusive
+    pub start: usize,
+    pub end: usize,
+}
+impl Range {
+    pub fn new(start: usize, end: usize) -> Self {
+        Self { start, end }
+    }
+    pub fn default() -> Self {
+        Self { start: MIN_VALUE, end: MAX_VALUE }
+    }
+    pub fn length(&self) -> usize {
+        self.end - self.start + 1
+    }
+    pub fn contains(&self, value: usize) -> bool {
+        self.start <= value && value <= self.end
+    }
+    // For range 1-4000, condition: s > 2053, 1-2053, 2054-4000,
+    // For range 1-4000, condition: s < 2053, 1-2052, 2053-4000,
+    // yields lower and higher range always in order
+    pub fn split_at(&self, more_than: bool, value: usize) -> (Range, Range) {
+        if value < self.start {
+            panic!("Split value is less than lower bound");
+        } else if value > self.end {
+            panic!("Split value is more than higher bound");
+        }
+        let lower_range = if more_than {
+            Range::new(self.start, value)
+        } else {
+            Range::new(self.start, value-1)
+        };
+        let higher_range = if more_than {
+            Range::new(value+1, self.end)
+        } else {
+            Range::new(value, self.end)
+        };
+        (lower_range, higher_range)
+    }
+}
+impl Display for Range {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
+        let str = format!("<{}-{}>", self.start, self.end);
+        formatter.write_str(&str)
+    }
+}
+struct Accumulator {
+    pub sum: usize
 }
 

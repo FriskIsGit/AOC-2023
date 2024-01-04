@@ -88,6 +88,14 @@ fn aoc_shell() {
                 let output = day16::beam1(input);
                 println!("Day16: {output}")
             },
+            18 => {
+                let output = day18::lagoon1(input);
+                println!("Day18: {output}")
+            },
+            19 => {
+                let output = day19::aplenty1(input);
+                println!("Day19: {output}")
+            },
             _ => eprintln!("Day{day} is not completed")
         }
     }
