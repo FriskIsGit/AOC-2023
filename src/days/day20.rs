@@ -1,23 +1,107 @@
 
 // Low pulse signal is sent to the broadcaster which repeats the same pulse to all its destinations
+const BUTTON_PUSHES: usize = 1000;
 pub fn pulse1(lines: Vec<String>) -> usize {
-    let (modules, start_modules) = parse_input(lines);
+    let (mut modules, start_modules) = parse_input(lines);
     println!("Start modules {:?}", start_modules);
-    display_modules(&modules);
-    for module in modules {
+    let mut low_pulses = 0;
+    let mut high_pulses = 0;
 
+    for i in 0..BUTTON_PUSHES {
+        println!("=====START {i}=====");
+        display_modules(&modules);
+        low_pulses += 1; // low pulse from the button module to the broadcaster
+        for name in &start_modules {
+            let index = get_module_index(name, &modules);
+            let receiver = &mut modules[index.unwrap()];
+            match receiver {
+                Module::FlipFlop(ref mut flip) => {
+                    low_pulses += 1;
+                    flip.receive(Pulse::Low);
+                }
+                _ => panic!("Broadcaster always broadcasts to flip flops")
+            }
+        }
+
+        let mut sender_modules = start_modules.clone();
+        let mut receivers = vec![];
+        loop {
+            for name in sender_modules.iter() {
+                let index = get_module_index(name, &modules);
+                let (name, pulse_to_send, destinations) =
+                    match &mut modules[index.unwrap()] {
+                    Module::FlipFlop(flip) => {
+                        let Some(pulse) = flip.pulse() else {
+                            continue;
+                        };
+                        (flip.name.to_owned(), pulse, flip.destinations.to_owned())
+                    }
+                    Module::Conjunction(conj) => {
+                        (conj.name.to_owned(), conj.pulse(), conj.destinations.to_owned())
+                    }
+                };
+                println!("==Transfers {i}==");
+                for dest in &destinations {
+                    println!("{name} {:?}-> {}", pulse_to_send, dest);
+                    match pulse_to_send {
+                        Pulse::Low => low_pulses += 1,
+                        Pulse::High => high_pulses += 1
+                    }
+                    let Some(dest_index) = get_module_index(dest, &modules) else {
+                        continue
+                    };
+                    match &mut modules[dest_index] {
+                        Module::FlipFlop(flip) =>
+                            flip.receive(pulse_to_send),
+                        Module::Conjunction(conjunction) =>
+                            conjunction.receive(&name, pulse_to_send)
+                    }
+                    // cannot extend_from_slice as some destinations don't exist
+                    receivers.push(dest.to_owned());
+                }
+            }
+
+            if receivers.len() == 0 {
+                println!("No more receivers");
+                break;
+            }
+            std::mem::swap(&mut receivers, &mut sender_modules);
+            receivers.clear();
+        }
+        // display_modules(&modules);
     }
-    0
+    low_pulses * high_pulses
+}
+
+fn get_module_index(name: &String, modules: &Vec<Module>) -> Option<usize> {
+    for (i, module) in modules.iter().enumerate() {
+        match module {
+            Module::FlipFlop(flip) => {
+                if flip.name == *name {
+                    return Some(i)
+                }
+            }
+            Module::Conjunction(conj) => {
+                if conj.name == *name {
+                    return Some(i)
+                }
+            }
+        }
+    }
+    return None
 }
 
 fn display_modules(modules: &Vec<Module>) {
     for module in modules {
         match module {
             Module::FlipFlop(flip) => {
-                println!("%{} -> {:?}", flip.name, flip.destinations);
+                println!("%{} -> {:?} on:{} next_send:{:?}", flip.name, flip.destinations,
+                         flip.on, flip.send);
             }
             Module::Conjunction(conj) => {
-                println!("&{} -> {:?}", conj.name, conj.destinations);
+                println!("&{} -> {:?} received:{:?} {:?}",
+                         conj.name, conj.destinations,
+                         conj.input_modules, conj.input_pulses);
             }
         }
     }
@@ -62,7 +146,7 @@ fn parse_names(destinations_raw: &str) -> Vec<String> {
     let mut i = 0;
     let bytes = destinations_raw.as_bytes();
     let length = destinations_raw.len();
-    while i < length - 1 {
+    while i < length {
         let mut end = i + 1;
         while end < length && bytes[end] != b',' {
             end += 1;
@@ -79,37 +163,73 @@ fn parse_names(destinations_raw: &str) -> Vec<String> {
 // if it was on - turns off and sends a low pulse
 pub struct FlipFlop {
     pub name: String,
-    pub on: bool,
-    pub destinations: Vec<String>
+    pub destinations: Vec<String>,
+    on: bool,
+    send: Option<Pulse>,
 }
 impl FlipFlop {
     pub fn new(name: String, destinations: Vec<String>) -> Self {
-        Self { name, on: false, destinations }
+        Self { name, destinations, on: false, send: None }
     }
-    pub fn send(&mut self) -> Pulse {
+    pub fn receive(&mut self, pulse: Pulse) {
+        if pulse == Pulse::High {
+            return;
+        }
         if self.on {
             self.on = false;
-            return Pulse::Low;
+            self.send = Some(Pulse::Low);
+            return;
         }
         self.on = true;
-        Pulse::High
+        self.send = Some(Pulse::High)
+    }
+    pub fn pulse(&mut self) -> Option<Pulse> {
+        std::mem::take(&mut self.send)
     }
 }
-// & remember the most recent pulse
+// & remember the most recent pulse for each input
+// if remembers high pulses for all inputs then it sends a low pulse
 pub struct Conjunction {
     pub name: String,
-    pub last_pulse: Pulse,
-    pub destinations: Vec<String>
+    pub destinations: Vec<String>,
+    input_modules: Vec<String>,
+    input_pulses: Vec<Pulse>
 }
 impl Conjunction {
     pub fn new(name: String, destinations: Vec<String>) -> Self {
-        Self { name, last_pulse: Pulse::Low, destinations }
+        Self { name, destinations, input_modules: vec![], input_pulses: vec![] }
+    }
+    pub fn receive(&mut self, from: &String, pulse: Pulse) {
+        let mut mod_index = None;
+        for (i, input) in self.input_modules.iter().enumerate() {
+            if input == from {
+                mod_index = Some(i);
+                break;
+            }
+        }
+        if let Some(index) = mod_index {
+            self.input_pulses[index] = pulse;
+        } else {
+            self.input_modules.push(from.to_string());
+            self.input_pulses.push(Pulse::Low);
+            let mut last_pulse = self.input_pulses.last_mut().unwrap();
+            *last_pulse = pulse;
+        }
+    }
+    // receive() must be called before pulse()
+    pub fn pulse(&self) -> Pulse {
+        let low = self.input_pulses.iter().find(|pulse| **pulse == Pulse::Low);
+        if low.is_some() {
+            return Pulse::High;
+        }
+        Pulse::Low
     }
 }
 pub enum Module {
     FlipFlop(FlipFlop),
     Conjunction(Conjunction),
 }
+#[derive(Clone, Debug, PartialEq, Copy)]
 enum Pulse {
     Low, High
 }
