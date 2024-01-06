@@ -5,8 +5,9 @@ mod days;
 
 fn main() {
     println!("Advent of Code shell:");
-    let lines = days::read_lines(20, InputType::DemoPart1);
-    let output = day20::pulse1(lines);
+    loop {
+        aoc_shell();
+    }
 }
 
 fn aoc_shell() {
@@ -94,6 +95,10 @@ fn aoc_shell() {
             19 => {
                 let output = day19::aplenty1(input);
                 println!("Day19: {output}")
+            },
+            20 => {
+                let output = day20::pulse1(input);
+                println!("Day20: {output}")
             },
             _ => eprintln!("Day{day} is not completed")
         }

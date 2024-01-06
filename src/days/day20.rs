@@ -1,15 +1,13 @@
+use std::collections::HashMap;
 
 // Low pulse signal is sent to the broadcaster which repeats the same pulse to all its destinations
 const BUTTON_PUSHES: usize = 1000;
 pub fn pulse1(lines: Vec<String>) -> usize {
     let (mut modules, start_modules) = parse_input(lines);
-    println!("Start modules {:?}", start_modules);
     let mut low_pulses = 0;
     let mut high_pulses = 0;
 
     for i in 0..BUTTON_PUSHES {
-        println!("=====START {i}=====");
-        display_modules(&modules);
         low_pulses += 1; // low pulse from the button module to the broadcaster
         for name in &start_modules {
             let index = get_module_index(name, &modules);
@@ -40,9 +38,9 @@ pub fn pulse1(lines: Vec<String>) -> usize {
                         (conj.name.to_owned(), conj.pulse(), conj.destinations.to_owned())
                     }
                 };
-                println!("==Transfers {i}==");
+
                 for dest in &destinations {
-                    println!("{name} {:?}-> {}", pulse_to_send, dest);
+                    // println!("{name} {:?}-> {}", pulse_to_send, dest);
                     match pulse_to_send {
                         Pulse::Low => low_pulses += 1,
                         Pulse::High => high_pulses += 1
@@ -118,12 +116,15 @@ fn parse_input(lines: Vec<String>) -> (Vec<Module>, Vec<String>) {
         break;
     }
     let mut modules = vec![];
+    let mut senders = Vec::with_capacity(lines.len());
+    let mut receivers = Vec::with_capacity(lines.len());
     for line in lines {
         let whitespace = line.find(' ').unwrap();
         let name = line[1..whitespace].to_string();
         let destinations_raw = &line[whitespace+4..line.len()];
         let dest_names = parse_names(destinations_raw);
-
+        senders.push(name.clone());
+        receivers.push(dest_names.clone());
         let module = if line.starts_with('%') {
             let flip_flop = FlipFlop::new(name, dest_names);
             Module::FlipFlop(flip_flop)
@@ -134,6 +135,18 @@ fn parse_input(lines: Vec<String>) -> (Vec<Module>, Vec<String>) {
             continue
         };
         modules.push(module);
+    }
+    for module in modules.iter_mut() {
+        let Module::Conjunction(conjunction) = module else {
+            continue
+        };
+        // in -> out, out, out
+        for (i, out) in receivers.iter().enumerate() {
+            if out.contains(&conjunction.name) {
+                conjunction.add_input(senders[i].clone())
+            }
+        }
+
     }
     (modules, starting_names)
 }
@@ -159,7 +172,7 @@ fn parse_names(destinations_raw: &str) -> Vec<String> {
 }
 
 // % react only to low pulses
-// if it was off - turns on and sends a high pulse
+// if it was off - turns on and sends a high piulse
 // if it was on - turns off and sends a low pulse
 pub struct FlipFlop {
     pub name: String,
@@ -192,6 +205,7 @@ impl FlipFlop {
 pub struct Conjunction {
     pub name: String,
     pub destinations: Vec<String>,
+    // inputs need to be filled ahead of time (not stated in the problem)
     input_modules: Vec<String>,
     input_pulses: Vec<Pulse>
 }
@@ -210,19 +224,21 @@ impl Conjunction {
         if let Some(index) = mod_index {
             self.input_pulses[index] = pulse;
         } else {
-            self.input_modules.push(from.to_string());
-            self.input_pulses.push(Pulse::Low);
-            let mut last_pulse = self.input_pulses.last_mut().unwrap();
-            *last_pulse = pulse;
+            panic!("Should have been filled with inputs");
         }
     }
     // receive() must be called before pulse()
     pub fn pulse(&self) -> Pulse {
         let low = self.input_pulses.iter().find(|pulse| **pulse == Pulse::Low);
-        if low.is_some() {
-            return Pulse::High;
+        if low.is_none() {
+            println!("Returning low because {:?} {:?}", self.input_pulses, self.input_modules);
+            return Pulse::Low
         }
-        Pulse::Low
+        Pulse::High
+    }
+    pub fn add_input(&mut self, name: String) {
+        self.input_modules.push(name);
+        self.input_pulses.push(Pulse::Low);
     }
 }
 pub enum Module {

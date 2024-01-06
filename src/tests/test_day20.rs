@@ -17,5 +17,11 @@ fn second_demo_part1() {
 fn test_full_part1() {
     let lines = days::read_lines(20, InputType::Full);
     let output = day20::pulse1(lines);
-    assert_eq!(output, 1)
+    assert_eq!(output, 925955316)
+}
+#[test]
+fn test_full_custom_part1() {
+    let lines = days::read_lines(20, InputType::Custom("day20.txt"));
+    let output = day20::pulse1(lines);
+    assert_eq!(output, 712543680)
 }
