@@ -89,6 +89,28 @@ fn get_module_index(name: &String, modules: &Vec<Module>) -> Option<usize> {
     return None
 }
 
+fn get_module_index_whose_dest_is(dest: &String, modules: &Vec<Module>) -> Option<usize> {
+    for (i, module) in modules.iter().enumerate() {
+        let destinations = match module {
+            Module::FlipFlop(flip) => &flip.destinations,
+            Module::Conjunction(conj) => &conj.destinations
+        };
+        for d in destinations {
+            if d == dest {
+                return Some(i);
+            }
+        }
+    }
+    return None
+}
+
+fn get_module_name(module: &Module) -> String {
+    return match module {
+        Module::FlipFlop(flip) => flip.name.clone(),
+        Module::Conjunction(conj) => conj.name.clone()
+    }
+}
+
 fn display_modules(modules: &Vec<Module>) {
     for module in modules {
         match module {
@@ -231,7 +253,6 @@ impl Conjunction {
     pub fn pulse(&self) -> Pulse {
         let low = self.input_pulses.iter().find(|pulse| **pulse == Pulse::Low);
         if low.is_none() {
-            println!("Returning low because {:?} {:?}", self.input_pulses, self.input_modules);
             return Pulse::Low
         }
         Pulse::High
@@ -248,4 +269,71 @@ pub enum Module {
 #[derive(Clone, Debug, PartialEq, Copy)]
 enum Pulse {
     Low, High
+}
+
+pub fn pulse2(lines: Vec<String>) -> usize {
+    let (mut modules, start_modules) = parse_input(lines);
+    let rx_sender_index = get_module_index_whose_dest_is(&"rx".to_string(), &modules)
+        .expect("Full input must contain rx as output");
+    let rx_sender = get_module_name(&modules[rx_sender_index]);
+    for presses in 0..usize::MAX {
+        for name in &start_modules {
+            let index = get_module_index(name, &modules);
+            let receiver = &mut modules[index.unwrap()];
+            match receiver {
+                Module::FlipFlop(ref mut flip) => {
+                    flip.receive(Pulse::Low);
+                }
+                _ => panic!("Broadcaster always broadcasts to flip flops")
+            }
+        }
+
+        let mut sender_modules = start_modules.clone();
+        let mut receivers = vec![];
+        loop {
+            for name in sender_modules.iter() {
+                let index = get_module_index(name, &modules);
+                let (name, pulse_to_send, destinations) =
+                    match &mut modules[index.unwrap()] {
+                        Module::FlipFlop(flip) => {
+                            let Some(pulse) = flip.pulse() else {
+                                continue;
+                            };
+                            (flip.name.to_owned(), pulse, flip.destinations.to_owned())
+                        }
+                        Module::Conjunction(conj) => {
+                            (conj.name.to_owned(), conj.pulse(), conj.destinations.to_owned())
+                        }
+                    };
+
+                for dest in &destinations {
+                    // println!("{name} {:?}-> {}", pulse_to_send, dest);
+                    if dest == "rx" && pulse_to_send == Pulse::Low {
+                        return presses;
+                    }
+                    let Some(dest_index) = get_module_index(dest, &modules) else {
+                        continue
+                    };
+                    match &mut modules[dest_index] {
+                        Module::FlipFlop(flip) => {
+                            flip.receive(pulse_to_send);
+                        }
+                        Module::Conjunction(conjunction) => {
+                            conjunction.receive(&name, pulse_to_send);
+                        }
+                    }
+                    // cannot extend_from_slice as some destinations don't exist
+                    receivers.push(dest.to_owned());
+                }
+            }
+
+            if receivers.len() == 0 {
+                break;
+            }
+            std::mem::swap(&mut receivers, &mut sender_modules);
+            receivers.clear();
+        }
+        // display_modules(&modules);
+    }
+    panic!("Not found..?");
 }

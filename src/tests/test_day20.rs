@@ -25,3 +25,10 @@ fn test_full_custom_part1() {
     let output = day20::pulse1(lines);
     assert_eq!(output, 712543680)
 }
+
+#[test]
+fn test_full_part2() {
+    let lines = days::read_lines(20, InputType::Full);
+    let output = day20::pulse2(lines);
+    assert_eq!(output, 925955316)
+}
