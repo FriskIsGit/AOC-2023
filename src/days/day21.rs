@@ -1,5 +1,6 @@
-
 const STEPS: usize = 64;
+
+// Problem description and explanation is terrible.
 pub fn step_counter1(lines: Vec<String>) -> usize {
     let map = parse_input(lines);
     print_map(&map);
@@ -21,5 +22,20 @@ fn print_map(map: &Vec<Vec<u8>>) {
             print!("{}", char::from(*val));
         }
         println!();
+    }
+}
+
+struct Dijkstra {
+    map: Vec<Vec<u8>>,
+    visited: Vec<Vec<bool>>,
+}
+
+impl Dijkstra {
+    pub fn new(map: Vec<Vec<u8>>) -> Self {
+        let visited = vec![vec![false; map[0].len()]; map.len()];
+        Self { map, visited }
+    }
+    pub fn do_something(&mut self) {
+
     }
 }
