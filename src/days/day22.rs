@@ -13,8 +13,9 @@ pub fn slabs1(lines: Vec<String>) -> usize {
     let mut initial_heights = Vec::with_capacity(bricks.len());
     for brick in &bricks {
         initial_heights.push(brick.start.z);
+        println!("{brick}");
     }
-
+    println!("DONE PRINTING");
     let mut comparisons = 0;
     // Settle bricks
     loop {
@@ -40,46 +41,102 @@ pub fn slabs1(lines: Vec<String>) -> usize {
                 }
             }
         }
-        println!("Dropped bricks: {drops}");
+        // println!("Dropped bricks: {drops}");
         if drops == 0 {
             break;
         }
     }
     println!("Comparisons performed: {comparisons}");
     // Some bricks fall as many as 155 on the Z axis
-    for (i, brick) in bricks.iter().enumerate() {
+    /*for (i, brick) in bricks.iter().enumerate() {
         let h = initial_heights[i];
         println!("{}", h - brick.start.z)
-    }
+    }*/
     // Determine which bricks lay on top of which
-    let mut map = HashMap::with_capacity(bricks.len());
+    let mut below_to_above: HashMap<usize, Vec<usize>> = HashMap::with_capacity(bricks.len());
+    let mut above_to_below: HashMap<usize, Vec<usize>> = HashMap::with_capacity(bricks.len());
 
-    for i in 0..bricks.len() {
-        for j in 0..bricks.len() {
-            let brick1 = &bricks[i];
-            let brick2 = &bricks[j];
-            if brick1.is_directly_above(brick2) {
-                let Some(vec) = map.get_mut(&i) else {
-                    map.insert(i, vec![j]);
-                    continue
-                };
-                vec.push(j);
+    for a in 0..bricks.len() {
+        for b in 0..bricks.len() {
+            if a == b {
+                continue
+            }
+            if bricks[a].is_directly_above(&bricks[b]) {
+                if let Some(above_vec) = below_to_above.get_mut(&b) {
+                    above_vec.push(a);
+                } else {
+                    below_to_above.insert(b, vec![a]);
+                }
+                if let Some(below_vec) = above_to_below.get_mut(&a) {
+                    below_vec.push(b);
+                } else {
+                    above_to_below.insert(a, vec![b]);
+                }
             }
         }
     }
     // How many bricks can be disintegrated
     let mut removable = 0;
-    for (key, vec) in &map {
-        if vec.len() == 0 {
+    for (main_key, above_vec) in &below_to_above {
+        if above_vec.len() == 0 {
+            println!("nothing on top");
             removable += 1;
             continue
         }
+        let mut supported_elsewhere = true;
+        for above_el in above_vec {
+            let Some(level_vec) = above_to_below.get(&above_el) else {
+                panic!("Unreachable, must be contained in map.");
+            };
 
+            if level_vec.len() == 1 {
+                // main_key is the only brick that supports above element
+                supported_elsewhere = false;
+                break;
+            }
+        }
+        if supported_elsewhere {
+            // let label = get_brick_label(&bricks[*main_key]);
+            // println!("Removable {} = {label}", bricks[*main_key]);
+            removable += 1;
+            continue
+        }
+        /*let label = get_brick_label(&bricks[*main_key]);
+        println!("Cannot remove {} = {label} because of: ", bricks[*main_key]);
+        for above_brick_i in above_vec {
+            let above_label = get_brick_label(&bricks[*above_brick_i]);
+            println!("{} = {above_label}, ", bricks[*above_brick_i]);
+        }
+        println!("=================");*/
     }
     println!("removables {removable}");
     // Access: space[x][y][z]
     // let space: Vec<Vec<Vec<u8>>> = vec![vec![vec![b' ';bounds.max_z]; bounds.max_y]; bounds.max_x];
-    removable
+    removable + bricks.len() - below_to_above.len()
+}
+
+//remove later
+pub fn get_brick_label(brick: &Brick) -> String {
+    let start = &brick.start;
+    let end = &brick.end;
+    let label = if start.x == 1 && start.y == 0 && end.x == 1 && end.y == 2 {
+        "A"
+    } else if start.x == 0 && start.y == 0 && end.x == 2 && end.y == 0 {
+        "B"
+    } else if start.x == 0 && start.y == 2 && end.x == 2 && end.y == 2 {
+        "C"
+    } else if start.x == 0 && start.y == 0 && end.x == 0 && end.y == 2 {
+        "D"
+    } else if start.x == 2 && start.y == 0 && end.x == 2 && end.y == 2 {
+        "E"
+    } else if start.x == 0 && start.y == 1 && end.x == 2 && end.y == 1 {
+        "F"
+    } else if start.x == 1 && start.y == 1 && end.x == 1 && end.y == 1 {
+        "G"
+    } else {
+        panic!("OK MAN");
+    };
+    label.into()
 }
 
 pub fn parse_input(lines: Vec<String>) -> Vec<Brick> {
@@ -168,7 +225,7 @@ impl Brick {
 
     pub fn drop_by_one(&mut self) -> bool {
         if self.start.z == 0 {
-            return false;
+            return false
         }
         self.start.z -= 1;
         self.end.z -= 1;
@@ -177,9 +234,9 @@ impl Brick {
 
     pub fn is_directly_above(&self, other: &Brick) -> bool {
         if self.start.z < other.end.z || self.start.z - other.end.z != 1 {
-            return false;
+            return false
         }
-        return match self.kind {
+        match self.kind {
             Kind::HorizontalX => {
                 match other.kind {
                     Kind::HorizontalX => {

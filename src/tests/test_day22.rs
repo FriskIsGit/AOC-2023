@@ -10,5 +10,5 @@ fn test_demo_part1() {
 fn test_full_part1() {
     let lines = days::read_lines(22, InputType::Full);
     let output = day22::slabs1(lines);
-    assert_eq!(output, 1)
+    assert_eq!(output, 441)
 }
