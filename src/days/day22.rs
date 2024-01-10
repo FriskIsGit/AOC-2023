@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 
 // z=0 is perfectly flat ground
@@ -10,21 +10,65 @@ pub fn slabs1(lines: Vec<String>) -> usize {
     bricks.sort_by(|brick1, brick2|
         brick1.start.z.partial_cmp(&brick2.start.z).unwrap()
     );
-    let mut initial_heights = Vec::with_capacity(bricks.len());
-    for brick in &bricks {
-        initial_heights.push(brick.start.z);
-        println!("{brick}");
+    settle_bricks(&mut bricks);
+
+    // Determine which bricks lay on top of which
+    let mut below_to_above: HashMap<usize, Vec<usize>> = HashMap::with_capacity(bricks.len());
+    let mut above_to_below: HashMap<usize, Vec<usize>> = HashMap::with_capacity(bricks.len());
+
+    for a in 0..bricks.len() {
+        for b in 0..bricks.len() {
+            if a == b {
+                continue;
+            }
+            if bricks[a].is_directly_above(&bricks[b]) {
+                if let Some(above_vec) = below_to_above.get_mut(&b) {
+                    above_vec.push(a);
+                } else {
+                    below_to_above.insert(b, vec![a]);
+                }
+                if let Some(below_vec) = above_to_below.get_mut(&a) {
+                    below_vec.push(b);
+                } else {
+                    above_to_below.insert(a, vec![b]);
+                }
+            }
+        }
     }
-    println!("DONE PRINTING");
+    // How many bricks can be disintegrated
+    let mut removable = 0;
+    for (_, above_vec) in &below_to_above {
+        let mut supported_elsewhere = true;
+        for above_el in above_vec {
+            let Some(level_vec) = above_to_below.get(&above_el) else {
+                panic!("Unreachable, must be contained in map.");
+            };
+
+            if level_vec.len() == 1 {
+                supported_elsewhere = false;
+                break;
+            }
+        }
+        if supported_elsewhere {
+            removable += 1;
+            continue;
+        }
+    }
+    println!("removables {removable}");
+    // Access: space[x][y][z]
+    // let space: Vec<Vec<Vec<u8>>> = vec![vec![vec![b' ';bounds.max_z]; bounds.max_y]; bounds.max_x];
+    removable + bricks.len() - below_to_above.len()
+}
+
+fn settle_bricks(bricks: &mut Vec<Brick>) {
     let mut comparisons = 0;
-    // Settle bricks
     loop {
         let mut drops = 0;
         for i in 0..bricks.len() {
             let mut can_move_down = true;
             for j in 0..bricks.len() {
                 if i == j {
-                    continue
+                    continue;
                 }
                 let brick1 = &bricks[i];
                 let brick2 = &bricks[j];
@@ -47,76 +91,10 @@ pub fn slabs1(lines: Vec<String>) -> usize {
         }
     }
     println!("Comparisons performed: {comparisons}");
-    // Some bricks fall as many as 155 on the Z axis
-    /*for (i, brick) in bricks.iter().enumerate() {
-        let h = initial_heights[i];
-        println!("{}", h - brick.start.z)
-    }*/
-    // Determine which bricks lay on top of which
-    let mut below_to_above: HashMap<usize, Vec<usize>> = HashMap::with_capacity(bricks.len());
-    let mut above_to_below: HashMap<usize, Vec<usize>> = HashMap::with_capacity(bricks.len());
-
-    for a in 0..bricks.len() {
-        for b in 0..bricks.len() {
-            if a == b {
-                continue
-            }
-            if bricks[a].is_directly_above(&bricks[b]) {
-                if let Some(above_vec) = below_to_above.get_mut(&b) {
-                    above_vec.push(a);
-                } else {
-                    below_to_above.insert(b, vec![a]);
-                }
-                if let Some(below_vec) = above_to_below.get_mut(&a) {
-                    below_vec.push(b);
-                } else {
-                    above_to_below.insert(a, vec![b]);
-                }
-            }
-        }
-    }
-    // How many bricks can be disintegrated
-    let mut removable = 0;
-    for (main_key, above_vec) in &below_to_above {
-        if above_vec.len() == 0 {
-            println!("nothing on top");
-            removable += 1;
-            continue
-        }
-        let mut supported_elsewhere = true;
-        for above_el in above_vec {
-            let Some(level_vec) = above_to_below.get(&above_el) else {
-                panic!("Unreachable, must be contained in map.");
-            };
-
-            if level_vec.len() == 1 {
-                // main_key is the only brick that supports above element
-                supported_elsewhere = false;
-                break;
-            }
-        }
-        if supported_elsewhere {
-            // let label = get_brick_label(&bricks[*main_key]);
-            // println!("Removable {} = {label}", bricks[*main_key]);
-            removable += 1;
-            continue
-        }
-        /*let label = get_brick_label(&bricks[*main_key]);
-        println!("Cannot remove {} = {label} because of: ", bricks[*main_key]);
-        for above_brick_i in above_vec {
-            let above_label = get_brick_label(&bricks[*above_brick_i]);
-            println!("{} = {above_label}, ", bricks[*above_brick_i]);
-        }
-        println!("=================");*/
-    }
-    println!("removables {removable}");
-    // Access: space[x][y][z]
-    // let space: Vec<Vec<Vec<u8>>> = vec![vec![vec![b' ';bounds.max_z]; bounds.max_y]; bounds.max_x];
-    removable + bricks.len() - below_to_above.len()
 }
 
 //remove later
-pub fn get_brick_label(brick: &Brick) -> String {
+pub fn get_demo_brick_label(brick: &Brick) -> String {
     let start = &brick.start;
     let end = &brick.end;
     let label = if start.x == 1 && start.y == 0 && end.x == 1 && end.y == 2 {
@@ -134,7 +112,7 @@ pub fn get_brick_label(brick: &Brick) -> String {
     } else if start.x == 1 && start.y == 1 && end.x == 1 && end.y == 1 {
         "G"
     } else {
-        panic!("OK MAN");
+        "Unknown"
     };
     label.into()
 }
@@ -189,7 +167,8 @@ struct Brick {
     pub start: Point,
     pub end: Point,
     pub length: usize,
-    pub kind: Kind
+    pub kind: Kind,
+    pub removable: bool,
 }
 
 impl Brick {
@@ -205,7 +184,7 @@ impl Brick {
             Kind::Singular
         };
 
-        Self { start, end, length, kind }
+        Self { start, end, length, kind, removable: false }
     }
     pub fn recalculate_length(&mut self) {
         self.length = Self::length(&self.start, &self.end);
@@ -225,7 +204,7 @@ impl Brick {
 
     pub fn drop_by_one(&mut self) -> bool {
         if self.start.z == 0 {
-            return false
+            return false;
         }
         self.start.z -= 1;
         self.end.z -= 1;
@@ -234,7 +213,7 @@ impl Brick {
 
     pub fn is_directly_above(&self, other: &Brick) -> bool {
         if self.start.z < other.end.z || self.start.z - other.end.z != 1 {
-            return false
+            return false;
         }
         match self.kind {
             Kind::HorizontalX => {
@@ -349,4 +328,173 @@ pub enum Kind {
     HorizontalY,
     Vertical,
     Singular,
+}
+
+pub fn slabs2(lines: Vec<String>) -> usize {
+    let mut bricks = parse_input(lines);
+    let mut bounds = Bounds::new_from(&bricks);
+    bounds.extend_by(1);
+    println!("bricks.len(): {} ;bounds ({},{},{})", bricks.len(), bounds.max_x, bounds.max_y, bounds.max_z);
+    bricks.sort_by(|brick1, brick2|
+        brick1.start.z.partial_cmp(&brick2.start.z).unwrap()
+    );
+    settle_bricks(&mut bricks);
+
+    // Determine which bricks lay on top of which
+    let mut below_to_above: HashMap<usize, Vec<usize>> = HashMap::with_capacity(bricks.len());
+    let mut above_to_below: HashMap<usize, Vec<usize>> = HashMap::with_capacity(bricks.len());
+
+    for a in 0..bricks.len() {
+        for b in 0..bricks.len() {
+            if a == b {
+                continue;
+            }
+            if bricks[a].is_directly_above(&bricks[b]) {
+                if let Some(above_vec) = below_to_above.get_mut(&b) {
+                    above_vec.push(a);
+                } else {
+                    below_to_above.insert(b, vec![a]);
+                }
+                if let Some(below_vec) = above_to_below.get_mut(&a) {
+                    below_vec.push(b);
+                } else {
+                    above_to_below.insert(a, vec![b]);
+                }
+            }
+        }
+    }
+    // Access: space[x][y][z]
+    // let space: Vec<Vec<Vec<u8>>> = vec![vec![vec![b' ';bounds.max_z]; bounds.max_y]; bounds.max_x];
+
+    for i in 0..bricks.len() {
+        let Some(above_vec) = below_to_above.get(&i) else {
+            bricks[i].removable = true;
+            continue;
+        };
+        let mut supported_elsewhere = true;
+        for above_el in above_vec {
+            let Some(level_vec) = above_to_below.get(&above_el) else {
+                panic!("Unreachable, must be contained in map.");
+            };
+            if level_vec.len() == 1 {
+                // main_key is the only brick that supports above element
+                supported_elsewhere = false;
+                break;
+            }
+        }
+        if supported_elsewhere {
+            bricks[i].removable = true;
+            continue;
+        }
+    }
+    // How many bricks fall if a brick is removed
+    let mut fallen_sum = 0;
+    for origin_i in 0..bricks.len() {
+        if bricks[origin_i].removable {
+            continue;
+        }
+
+        //println!("Considering {} = {}", &bricks[origin_i], get_demo_brick_label(&bricks[origin_i]));
+        let origin_height = bricks[origin_i].end.z;
+        let mut fallen_levels: Vec<FallenLevel> = vec![];
+        let mut call_stack: Vec<FallenLevel> = vec![FallenLevel::new(origin_i)];
+        // finds combinations of levels which are destroyed
+        while let Some(current_level) = call_stack.pop() {
+            let Some(above_vec) = below_to_above.get(&current_level.brick_index) else {
+                fallen_levels.push(current_level);
+                continue;
+            };
+            // if an above_piece above is supported elsewhere it doesn't fall
+            let mut immediate_falls = vec![];
+            for above_piece in above_vec {
+                let Some(below_vec) = above_to_below.get(&above_piece) else {
+                    panic!("Unreachable, must be contained in map.");
+                };
+                // it maps to the brick we came from so it falls along
+                if below_vec.len() == 1 {
+                    immediate_falls.push(*above_piece);
+                    continue;
+                }
+                // if has more elements below, it needs a check to see if it maps back to the origin brick
+                // by mapping to below bricks down to origin_height level and not lower
+                let has_alternative = find_alternative_origin_for(
+                    *above_piece, origin_i, origin_height, &bricks, &above_to_below
+                );
+                if !has_alternative {
+                    immediate_falls.push(*above_piece);
+                }
+            }
+
+            if immediate_falls.len() == 0 {
+                // no more falls, current is the last brick that falls
+                // assuming the pieces above were checked
+                fallen_levels.push(current_level);
+                continue;
+            }
+
+            for fall in immediate_falls {
+                let mut any_level = FallenLevel::new(fall);
+                any_level.fallen_below.push(current_level.brick_index);
+                any_level.fallen_below.extend_from_slice(&current_level.fallen_below);
+                call_stack.push(any_level);
+            }
+        }
+        for lvl in fallen_levels.iter_mut() {
+            lvl.fallen_below.pop();
+        }
+        let mut unique: HashSet<usize> = HashSet::new();
+        for fallen_level in fallen_levels {
+            unique.insert(fallen_level.brick_index);
+            for brick_below in &fallen_level.fallen_below {
+                unique.insert(*brick_below);
+            }
+        }
+        /*println!("Fallen: {} unique_set: {:?}", unique.len(), unique);
+        for el in unique.iter() {
+            let the_brick = &bricks[*el];
+            println!("El: {the_brick} = {}", get_demo_brick_label(the_brick));
+        }*/
+        fallen_sum += unique.len();
+    }
+    fallen_sum
+}
+
+// this really ruins the performance but it works
+fn find_alternative_origin_for(
+    piece_index: usize,
+    origin_index: usize,
+    origin_height: usize,
+    bricks: &Vec<Brick>,
+    above_to_below: &HashMap<usize, Vec<usize>>) -> bool {
+
+    let current_z = bricks[piece_index].end.z;
+    if current_z == 0 || current_z < origin_height {
+        return true;
+    }
+
+    let Some(below_vec) = above_to_below.get(&piece_index) else {
+        panic!("Unreachable, must be contained in map.");
+    };
+
+    for below_i in below_vec {
+        if *below_i == origin_index {
+            continue;
+        }
+        if find_alternative_origin_for(*below_i, origin_index, origin_height, &bricks, &above_to_below) {
+            return true;
+        }
+    }
+
+    false
+}
+
+struct FallenLevel {
+    brick_index: usize,
+    fallen_below: Vec<usize>,
+}
+
+impl FallenLevel {
+    pub fn new(brick_index: usize) -> Self {
+        Self { brick_index, fallen_below: vec![] }
+    }
 }
