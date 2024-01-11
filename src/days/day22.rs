@@ -139,7 +139,7 @@ pub fn parse_input(lines: Vec<String>) -> Vec<Brick> {
     slabs
 }
 
-struct Point {
+pub struct Point {
     pub x: usize,
     pub y: usize,
     pub z: usize,
@@ -157,13 +157,13 @@ impl Display for Point {
     }
 }
 
-struct Bounds {
+pub struct Bounds {
     pub max_x: usize,
     pub max_y: usize,
     pub max_z: usize,
 }
 
-struct Brick {
+pub struct Brick {
     pub start: Point,
     pub end: Point,
     pub length: usize,
@@ -488,7 +488,7 @@ fn find_alternative_origin_for(
     false
 }
 
-struct FallenLevel {
+pub struct FallenLevel {
     brick_index: usize,
     fallen_below: Vec<usize>,
 }
