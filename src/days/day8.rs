@@ -90,6 +90,8 @@ impl LoopingIterator {
     }
 }
 
+const OPTIMAL_ITERATIONS: usize = 50_000;
+
 // How many steps does it take before you're only on nodes that end with Z?
 pub fn wasteland2(lines: Vec<String>) -> usize {
     let input = parse_input(lines);
@@ -100,9 +102,12 @@ pub fn wasteland2(lines: Vec<String>) -> usize {
             ghost_labels.push(key.clone())
         }
     }
+    println!("Number of ghosts: {}", ghost_labels.len());
+    let mut visits: Vec<Vec<usize>> = vec![vec![]; ghost_labels.len()];
+
     let mut steps_required = 0;
     let ghosts = ghost_labels.len();
-    for _ in 0..100_0000 {
+    for _ in 0..OPTIMAL_ITERATIONS {
         let mov = moves.next();
         for i in 0..ghosts {
             let label= &ghost_labels[i];
@@ -115,29 +120,37 @@ pub fn wasteland2(lines: Vec<String>) -> usize {
         }
 
         steps_required += 1;
-        let mut done = 0;
-        let mut all_done = true;
-        for label in &ghost_labels {
-            if !label.ends_with('Z') {
-                all_done = false;
-                // break;
+        // Every ghost happens to have its own node that ends with Z that they visit every cycle,
+        // while avoiding other nodes that end with Z which happen to be destined for other ghosts
+        for (i, label) in ghost_labels.iter().enumerate() {
+            if label.ends_with('Z') {
+                visits[i].push(steps_required);
             }
-            else {
-                done += 1;
-            }
-        }
-        if done != 0 {
-            eprintln!("Done: {done}/{ghosts}");
-        }
-
-        if all_done {
-            break;
         }
     }
-    steps_required
+
+    let mut lcm = 1;
+    for ghost_visits in visits {
+        lcm = LCM(lcm, ghost_visits[0]);
+        println!("{:?}", ghost_visits);
+    }
+
+    lcm
 }
 
+fn GCD(mut a: usize, mut b: usize) -> usize {
+    let mut c: usize;
+    while b != 0 {
+        c = a % b;
+        a = b;
+        b = c;
+    }
+    return a;
+}
 
+fn LCM(a: usize, b: usize) -> usize {
+    return a * (b / GCD(a, b));
+}
 
 pub struct CircularBuffer {
     i: usize,

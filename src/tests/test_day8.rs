@@ -32,7 +32,8 @@ fn test_demo_part2() {
 fn test_full_part2() {
     let lines = days::read_lines(8, InputType::Full);
     let steps = day8::wasteland2(lines);
-    assert_eq!(steps, 1)
+    // no LCM answer: 890271798660171933042269950000
+    assert_eq!(steps, 8245452805243)
 }
 
 #[test]
