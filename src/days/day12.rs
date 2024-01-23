@@ -1,30 +1,94 @@
+use std::cmp::max;
 use std::fmt::{Display, format, Formatter, Write};
 use std::ops::RangeInclusive;
 
 // operational (.) or damaged (#) or unknown (?)
 pub fn hot_springs1(lines: Vec<String>) -> usize {
     let records = parse_input(lines);
+    let mut question_marks_max = 0;
     for record in &records {
-        println!("{record}");
+        let mut count = 0;
+        for byte in &record.springs {
+            if *byte == b'?' {
+                count += 1;
+            }
+        }
+        question_marks_max = max(count, question_marks_max);
+        // println!("{record}");
     }
-    let mut arrangement_sum  = 0;
+    println!("MAX QUESTIONS: {question_marks_max}");
+    let mut unknowns = vec![];
     for record in &records {
         let mut unknown_indices = vec![];
-        let groups = &record.damaged_groups;
         for i in 0..record.springs.len() {
-            let spring = record.springs[i];
-            if spring == b'?' {
+            if record.springs[i] == b'?' {
                 unknown_indices.push(i);
             }
         }
-        for i in 0..record.springs.len() {
-            let spring = record.springs[i];
-            if spring == b'?' {
-
+        unknowns.push(unknown_indices);
+    }
+    let mut matching = 0;
+    for (i, record) in records.iter().enumerate() {
+        let unknown_indices = &unknowns[i];
+        let mut flipper = BitFlipper::new(unknown_indices.len());
+        let combinations = usize::pow(2, unknown_indices.len() as u32);
+        for _ in 0..combinations {
+            // create a new spring vec and fill it with a combination
+            let mut candidate_springs = record.springs.clone();
+            let mut bit = 0;
+            for u in unknown_indices {
+                let spring = if flipper.bits[bit] { b'.' } else { b'#' };
+                candidate_springs[*u] = spring;
+                bit += 1;
             }
+            // check if combination matches damaged spring groups
+            if matching_groups(&candidate_springs, &record.damaged_groups) {
+                // print_byte_arr(&candidate_springs);
+                matching += 1;
+            }
+            flipper.next();
+        }
+        // println!("==============");
+    }
+
+    matching
+}
+
+pub fn matching_groups(springs: &Vec<u8>, damaged_groups: &Vec<u32>) -> bool {
+    let mut dmg_count = 0;
+    let mut groups = vec![];
+    for (si, spring) in springs.iter().enumerate() {
+        if *spring == b'#' {
+            dmg_count += 1;
+            if si == springs.len()-1 {
+                // there's more groups than there should be
+                if groups.len() == damaged_groups.len() {
+                    return false;
+                }
+                groups.push(dmg_count);
+                break;
+            }
+        } else if *spring == b'.' {
+            if dmg_count == 0 {
+                continue
+            }
+            // there's more groups than there should be
+            if groups.len() == damaged_groups.len() {
+                return false;
+            }
+            groups.push(dmg_count);
+            dmg_count = 0;
         }
     }
-    arrangement_sum
+    return groups.eq(damaged_groups);
+}
+
+fn print_byte_arr(vec: &Vec<u8>) {
+    let mut str = String::with_capacity(vec.len());
+    for el in vec {
+        str.push(char::from(*el));
+    }
+    println!("{str}");
 }
 
 fn parse_input(lines: Vec<String>) -> Vec<Record> {
@@ -45,7 +109,28 @@ fn parse_input(lines: Vec<String>) -> Vec<Record> {
     records
 }
 
-struct Record {
+pub struct BitFlipper {
+    pub bits: Vec<bool>
+}
+impl BitFlipper {
+    pub fn new(len: usize) -> Self {
+        Self { bits: vec![false; len] }
+    }
+    pub fn next(&mut self) {
+        for i in 0..self.bits.len() {
+            if self.bits[i] {
+                self.bits[i] = false;
+                continue
+            }
+            else {
+                self.bits[i] = true;
+                break;
+            }
+        }
+    }
+}
+
+pub struct Record {
     springs: Vec<u8>,
     damaged_groups: Vec<u32>,
 }
