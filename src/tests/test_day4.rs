@@ -27,3 +27,16 @@ fn test_full_part2() {
     let scratchcards = day4::scratchcards2(lines);
     assert_eq!(scratchcards, 9881048)
 }
+
+#[test]
+fn test_full_custom_part1() {
+    let lines = days::read_lines(4, InputType::Custom("custom4.txt"));
+    let scratchcards = day4::scratchcards1(lines);
+    assert_eq!(scratchcards, 23441)
+}
+#[test]
+fn test_full_custom_part2() {
+    let lines = days::read_lines(4, InputType::Custom("custom4.txt"));
+    let scratchcards = day4::scratchcards2(lines);
+    assert_eq!(scratchcards, 5923918)
+}
