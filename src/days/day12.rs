@@ -1,22 +1,14 @@
 use std::cmp::max;
-use std::fmt::{Display, format, Formatter, Write};
-use std::ops::RangeInclusive;
+use std::fmt::{Display, Formatter, Write};
 
 // operational (.) or damaged (#) or unknown (?)
 pub fn hot_springs1(lines: Vec<String>) -> usize {
-    let records = parse_input(lines);
-    let mut question_marks_max = 0;
+    let mut records = parse_input(lines);
+    simplify_records(&mut records);
     for record in &records {
-        let mut count = 0;
-        for byte in &record.springs {
-            if *byte == b'?' {
-                count += 1;
-            }
-        }
-        question_marks_max = max(count, question_marks_max);
-        // println!("{record}");
+        println!("{}", record);
     }
-    println!("MAX QUESTIONS: {question_marks_max}");
+    println!("Most question marks: {}", max_question_marks_of_records(&records));
     let mut unknowns = vec![];
     for record in &records {
         let mut unknown_indices = vec![];
@@ -29,6 +21,7 @@ pub fn hot_springs1(lines: Vec<String>) -> usize {
     }
     let mut matching = 0;
     for (i, record) in records.iter().enumerate() {
+        let mut record_combinations = 0;
         let unknown_indices = &unknowns[i];
         let mut flipper = BitFlipper::new(unknown_indices.len());
         let combinations = usize::pow(2, unknown_indices.len() as u32);
@@ -44,14 +37,160 @@ pub fn hot_springs1(lines: Vec<String>) -> usize {
             // check if combination matches damaged spring groups
             if matching_groups(&candidate_springs, &record.damaged_groups) {
                 // print_byte_arr(&candidate_springs);
-                matching += 1;
+                record_combinations += 1;
             }
             flipper.next();
         }
+        println!("RECORD COMBINATIONS: {record_combinations}");
+        matching += record_combinations;
         // println!("==============");
     }
 
     matching
+}
+
+fn simplify_records(records: &mut Vec<Record>) {
+    // delete joined dots
+    let mut looking_for_dot = true;
+    for record in records.iter_mut() {
+        let mut new_springs = vec![];
+        for byte in &record.springs {
+            if looking_for_dot && *byte == b'.' {
+                looking_for_dot = false;
+                new_springs.push(b'.');
+            } else if !looking_for_dot && *byte == b'.' {
+                continue
+            } else {
+                looking_for_dot = true;
+                new_springs.push(*byte);
+            }
+        }
+        record.springs = new_springs;
+    }
+    trim_trailing_dots(records);
+    discard_front_section(records);
+    // discard_back_section(records);
+}
+
+fn discard_back_section(records: &mut Vec<Record>) {
+    for record in records {
+        let mut count = 0;
+        let mut found_damaged = false;
+        let last_group_index = record.damaged_groups.len() - 1;
+        let extent = (record.damaged_groups[last_group_index] * 2) as usize;
+        let mut s: isize = (record.springs.len() - 1) as isize;
+        let mut depth = 0;
+        while depth < extent && s > -1 {
+            if record.springs[s as usize] == b'#' {
+                if !found_damaged {
+                    found_damaged = true;
+                }
+                count += 1;
+            }
+            else if found_damaged {
+                break;
+            }
+            s -= 1;
+            depth += 1;
+        }
+        if count == record.damaged_groups[last_group_index] {
+            unsafe { record.springs.set_len(s as usize); }
+            unsafe { record.damaged_groups.set_len(record.damaged_groups.len() - 1); }
+        }
+    }
+}
+
+fn discard_front_section(records: &mut Vec<Record>) {
+    for record in records {
+        let mut count = 0;
+        let mut found_damaged = false;
+        let extent = (record.damaged_groups[0] * 2) as usize;
+        let mut s: usize = 0;
+        while s < extent && s < record.springs.len() {
+            if record.springs[s] == b'#' {
+                if !found_damaged {
+                    found_damaged = true;
+                }
+                count += 1;
+            }
+            else if found_damaged {
+                break;
+            }
+            s += 1;
+        }
+        if count == record.damaged_groups[0] {
+            let partition = s + 1;
+            record.springs.rotate_left(partition);
+            unsafe { record.springs.set_len(record.springs.len() - partition); }
+            record.damaged_groups.rotate_left(1);
+            unsafe { record.damaged_groups.set_len(record.damaged_groups.len() - 1); }
+        }
+    }
+}
+
+fn trim_trailing_dots(records: &mut Vec<Record>) {
+    for record in records.iter_mut() {
+        let length = record.springs.len();
+        let first_dot = record.springs[0] == b'.';
+        let last_dot  = record.springs[length-1] == b'.';
+        if first_dot && last_dot {
+            record.springs.rotate_left(1);
+            unsafe { record.springs.set_len(length - 2); }
+        } else if first_dot {
+            record.springs.rotate_left(1);
+            unsafe { record.springs.set_len(length - 1); }
+        } else if last_dot {
+            unsafe { record.springs.set_len(length - 1); }
+        }
+    }
+}
+
+fn starts_with(vec: &Vec<u8>, byte: u8, count: usize) -> bool {
+    for i in 0..count {
+        if vec[i] != byte {
+            return false
+        }
+    }
+    return true;
+}
+
+fn ends_with(vec: &Vec<u8>, byte: u8, count: usize) -> bool {
+    let mut i = vec.len() - 1;
+    let mut times = 0;
+
+    while times < count {
+        if vec[i] != byte {
+            return false
+        }
+        i -= 1;
+        times += 1;
+    }
+    return true;
+}
+
+fn distributions(length: usize, xs: usize) -> usize {
+    length - xs + 1
+}
+fn pattern_length(vec: &Vec<u32>, from: usize) -> usize {
+    let mut sum = 0;
+    for i in from..vec.len() {
+        sum += vec[i] as usize;
+    }
+    sum + vec.len() - from - 1
+}
+fn max_question_marks_of_records(records: &Vec<Record>) -> usize {
+    let mut max_val = 0;
+    for record in records {
+        let mut count = 0;
+        for byte in &record.springs {
+            if *byte == b'?' {
+                count += 1;
+            }
+        }
+        max_val = max(count, max_val);
+        // println!("{record}");
+    }
+    max_val
 }
 
 pub fn matching_groups(springs: &Vec<u8>, damaged_groups: &Vec<u32>) -> bool {
@@ -109,6 +248,7 @@ fn parse_input(lines: Vec<String>) -> Vec<Record> {
     records
 }
 
+
 pub struct BitFlipper {
     pub bits: Vec<bool>
 }
@@ -156,5 +296,32 @@ impl Display for Record {
             str.push(',');
         }
         f.write_str(&str)
+    }
+}
+
+pub fn hot_springs2(lines: Vec<String>) -> usize {
+    let mut records = parse_input(lines);
+    append_input(&mut records, 4);
+    simplify_records(&mut records);
+    println!("Most question marks: {}", max_question_marks_of_records(&records));
+    for record in records {
+        println!("{}", record);
+    }
+    0
+}
+
+fn append_input(records: &mut Vec<Record>, times: u8) {
+    for record in records {
+        let base_spring = record.springs.clone();
+        for i in 0..times {
+            record.springs.extend_from_slice(&base_spring);
+            if i != times-1 {
+                record.springs.push(b'?');
+            }
+        }
+        let base_group = record.damaged_groups.clone();
+        for _ in 0..times {
+            record.damaged_groups.extend_from_slice(&base_group);
+        }
     }
 }

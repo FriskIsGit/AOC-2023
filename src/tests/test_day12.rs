@@ -78,3 +78,32 @@ fn vec_nq_test() {
     let eq = groups1.eq(&groups2);
     assert!(!eq)
 }
+// ============= PART2
+#[test]
+fn test_demo_part2() {
+    let lines = days::read_lines(12, InputType::DemoPart1);
+    let arrangements = day12::hot_springs2(lines);
+    assert_eq!(arrangements, 525152)
+}
+
+#[test]
+fn test_full_part2() {
+    let lines = days::read_lines(12, InputType::Full);
+    let arrangements = day12::hot_springs2(lines);
+    assert_eq!(arrangements, 1)
+}
+
+#[test]
+fn fibonacci() {
+    println!("USIZE::MAX {}", usize::MAX);
+    let n = 50;
+    let mut left = 1usize;
+    let mut right = 1usize;
+    for _ in 0..n-2 {
+        let sum = left + right;
+        println!("ADDING {left} + {right}");
+        left = right;
+        right = sum;
+    }
+    println!("Right: {right}")
+}

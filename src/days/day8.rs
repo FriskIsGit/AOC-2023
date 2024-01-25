@@ -1,6 +1,4 @@
 use std::collections::HashMap;
-use std::io;
-use std::io::Write;
 
 pub fn wasteland1(lines: Vec<String>) -> usize {
     let input = parse_input(lines);
