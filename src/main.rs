@@ -100,6 +100,10 @@ fn aoc_shell() {
                 let output = day20::pulse1(input);
                 println!("Day20: {output}")
             },
+            22 => {
+                let output = day22::slabs1(input);
+                println!("Day22: {output}")
+            },
             _ => eprintln!("Day{day} is not completed")
         }
     }
