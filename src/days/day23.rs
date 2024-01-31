@@ -1,18 +1,87 @@
 use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
 
+// We cannot step on the same tile twice
+// Finding longest path might just be NP-hardness problem
+// Possible solution: cast many different paths at every fork
 pub fn long_walk1(lines: Vec<String>) -> usize {
     let map = read_map(lines);
     print_map(&map);
     let walkable = count_byte(&map, b'.');
-    let dijkstra = Dijkstra::new_detect(map);
-    println!("start: {} | end: {}", dijkstra.start, dijkstra.end);
-    println!("walkable: {walkable}");
+    let mut visual = map.clone();
+    let mut dijkstra = Dijkstra::new_detect(map);
+    println!("START: {} | END: {}", dijkstra.start, dijkstra.end);
+    println!("Walkable: {walkable}");
     let mut current = dijkstra.start.clone();
     // alternatively run until all nodes are explored?
     while !current.eq(&dijkstra.end) {
-        current = dijkstra.end.clone();
+        // Consider all unvisited neighbors & calculate their tentative distances through the current node
+        let neighbors = dijkstra.consider_neighbors(&current);
+        let origin_hash = Dijkstra::get_hash(current.row as u16, current.col as u16);
+        let distance_to_origin = dijkstra.node_at(&current).best_distance;
+
+        let mut available_points = vec![];
+        for neighbor in neighbors.iter() {
+            let element = dijkstra.map_at(neighbor);
+            match element {
+                b'#' => continue, // can't step on
+                b'.' => {
+                    let next_node = dijkstra.node_at(neighbor);
+                    if next_node.best_distance > distance_to_origin + 1 {
+                        next_node.best_distance = distance_to_origin + 1;
+                        next_node.set_origin(origin_hash);
+                    }
+                    available_points.push(neighbor.clone());
+                }
+                b'>' => {
+                    let slope_right = Point::new(neighbor.row, neighbor.col + 1);
+                    let next_node = dijkstra.node_at(&slope_right);
+                    if next_node.best_distance > distance_to_origin + 2 {
+                        next_node.best_distance = distance_to_origin + 2;
+                        next_node.set_origin(origin_hash);
+                    }
+                    // (moving left and going back to the origin)
+                    if !current.eq(&slope_right) {
+                        available_points.push(neighbor.clone());
+                    }
+                }
+                b'v' => {
+                    let slope_down = Point::new(neighbor.row + 1, neighbor.col);
+                    if dijkstra.is_visited(slope_down.row, slope_down.col) {
+                        continue
+                    }
+                    let next_node = dijkstra.node_at(&slope_down);
+                    if next_node.best_distance > distance_to_origin + 2 {
+                        next_node.best_distance = distance_to_origin + 2;
+                        next_node.set_origin(origin_hash);
+                    }
+                    // (moving up and going back to the origin)
+                    if !current.eq(&slope_down) {
+                        available_points.push(neighbor.clone());
+                    }
+                }
+                _ => eprintln!("unrecognized element: {element}")
+            }
+        }
+        visual[current.row][current.col] = b'O';
+        dijkstra.mark_visited(&current);
+        if available_points.len() == 0 {
+            println!("No way to proceed, current: {}, END: {}", current, dijkstra.end);
+            break;
+        }
+        // choose one with highest? tentative distance out of available nodes
+        let mut node_index = 0;
+        let mut max = u32::MIN;
+        for (i, next_point) in available_points.iter().enumerate() {
+            let map_node = dijkstra.node_at(&next_point);
+            if map_node.best_distance > max {
+                max = map_node.best_distance;
+                node_index = i;
+            }
+        }
+        current = available_points[node_index].clone(); // no need for clone
     }
+    print_map(&visual);
     0
 }
 
@@ -99,7 +168,11 @@ impl Dijkstra {
     pub fn new(map: Vec<Vec<u8>>, start: Point, end: Point) -> Self {
         let mut nodes = vec![vec![Node::new(); map[0].len()]; map.len()];
         nodes[start.row][start.col].best_distance = 0;
-        Self { map, start, end, visited: HashSet::with_capacity(32), nodes }
+        let start_row = start.row as u16;
+        let start_col = start.col as u16;
+        let mut dijkstra = Self { map, start, end, visited: HashSet::with_capacity(32), nodes };
+        dijkstra.mark_hash(Self::get_hash(start_row, start_col));
+        dijkstra
     }
 
     pub fn new_detect(map: Vec<Vec<u8>>) -> Self {
@@ -110,12 +183,17 @@ impl Dijkstra {
         Self { map, start, end, visited: HashSet::with_capacity(32), nodes }
     }
 
-    pub fn is_visited(&self, row: u16, col: u16) -> bool {
-        let hash = Self::get_hash(row, col);
+    pub fn is_visited(&self, row: usize, col: usize) -> bool {
+        let hash = Self::get_hash(row as u16, col as u16);
         self.visited.contains(&hash)
     }
 
-    pub fn mark_visited(&mut self, hash: u16) -> bool {
+    pub fn mark_visited(&mut self, point: &Point) -> bool {
+        let hash = Self::get_hash(point.row as u16, point.col as u16);
+        self.visited.insert(hash)
+    }
+
+    pub fn mark_hash(&mut self, hash: u16) -> bool {
         self.visited.insert(hash)
     }
 
@@ -131,6 +209,35 @@ impl Dijkstra {
         let col = hash & 0xFF;
         let row = hash >> 8;
         (row, col)
+    }
+
+    pub fn consider_neighbors(&self, current: &Point) -> Vec<Point> {
+        let mut neighbors = vec![];
+        if current.col > 0 && !self.is_visited(current.row, current.col - 1) {
+            let left = Point::new(current.row, current.col - 1);
+            neighbors.push(left);
+        }
+        if current.col + 1 < self.map[0].len() && !self.is_visited(current.row, current.col + 1) {
+            let right = Point::new(current.row, current.col + 1);
+            neighbors.push(right);
+        }
+        if current.row > 0 && !self.is_visited(current.row - 1, current.col) {
+            let top = Point::new(current.row - 1, current.col);
+            neighbors.push(top);
+        }
+        if current.row + 1 < self.map.len() && !self.is_visited(current.row + 1, current.col) {
+            let down = Point::new(current.row + 1, current.col);
+            neighbors.push(down);
+        }
+        neighbors
+    }
+
+    pub fn map_at(&self, point: &Point) -> u8 {
+        self.map[point.row][point.col]
+    }
+
+    pub fn node_at(&mut self, point: &Point) -> &mut Node {
+        &mut self.nodes[point.row][point.col]
     }
 
     pub fn find_start(map: &Vec<Vec<u8>>) -> Point {

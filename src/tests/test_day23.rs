@@ -12,3 +12,4 @@ fn test_full_part1() {
     let output = day23::long_walk1(lines);
     assert_eq!(output, 1)
 }
+
