@@ -21,3 +21,4 @@ mod test_day20;
 mod test_day21;
 mod test_day22;
 mod test_day23;
+mod test_day24;
