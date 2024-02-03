@@ -1,13 +1,22 @@
 use std::fmt::{Display, Formatter};
 
+const DEMO_MIN: f64 = 7f64;
+const DEMO_MAX: f64 = 27f64;
+
 const MIN_COORDINATE: f64 = 200000000000000f64;
 const MAX_COORDINATE: f64 = 400000000000000f64;
 
 // For this part - disregard Z axis entirely
 pub fn hailstones1(lines: Vec<String>) -> usize {
+    hailstones1_bounds(lines, MIN_COORDINATE, MAX_COORDINATE)
+}
+pub fn hailstones_demo1(lines: Vec<String>) -> usize {
+    hailstones1_bounds(lines, DEMO_MIN, DEMO_MAX)
+}
+fn hailstones1_bounds(lines: Vec<String>, min_coordinate: f64, max_coordinate: f64) -> usize {
     let hailstones = parse_input(lines);
     let lines = create_lines(&hailstones);
-    let intersects = find_intersects(&lines, &hailstones);
+    let intersects = find_intersects(&lines, &hailstones, min_coordinate, max_coordinate);
     // println!("Intersects: {intersects}");
     intersects
 }
@@ -26,7 +35,7 @@ fn create_lines(hails: &Vec<Hailstone>) -> Vec<Line2D> {
     lines
 }
 
-fn find_intersects(lines: &[Line2D], hailstones: &[Hailstone]) -> usize {
+fn find_intersects(lines: &[Line2D], hailstones: &[Hailstone], min_coordinate: f64, max_coordinate: f64) -> usize {
     let mut count = 0;
     let line_count = lines.len();
     for i in 0..line_count {
@@ -35,8 +44,8 @@ fn find_intersects(lines: &[Line2D], hailstones: &[Hailstone]) -> usize {
             let line2 = &lines[j];
 
             if let Some(intersect) = line1.intersect(line2) {
-                if intersect.x >= MIN_COORDINATE && intersect.x <= MAX_COORDINATE
-                && intersect.y >= MIN_COORDINATE && intersect.y <= MAX_COORDINATE {
+                if intersect.x >= min_coordinate && intersect.x <= max_coordinate
+                && intersect.y >= min_coordinate && intersect.y <= max_coordinate {
                     if is_approaching(&hailstones[i], &intersect) &&
                         is_approaching(&hailstones[j], &intersect) {
                         count += 1;

@@ -23,3 +23,6 @@ https://adventofcode.com/
 |-------|----|----|----|----|----|----|
 | Part1 | ✅  | ?? | ✅  | ⬜  | ✅  | ⬜  |
 | Part2 | ⬜  | ⬜  | ✅  | ⬜  | ⬜  | ⬜  |
+
+## Conclusions
+TODO
