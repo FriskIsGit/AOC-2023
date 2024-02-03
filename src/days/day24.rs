@@ -7,10 +7,9 @@ const MAX_COORDINATE: f64 = 400000000000000f64;
 pub fn hailstones1(lines: Vec<String>) -> usize {
     let hailstones = parse_input(lines);
     let lines = create_lines(&hailstones);
-    println!("Intersects-----");
-    // TODO: recognize direction when determining intersections
-    let intersects = find_intersects(&lines);
-    0
+    let intersects = find_intersects(&lines, &hailstones);
+    // println!("Intersects: {intersects}");
+    intersects
 }
 
 fn create_lines(hails: &Vec<Hailstone>) -> Vec<Line2D> {
@@ -27,21 +26,26 @@ fn create_lines(hails: &Vec<Hailstone>) -> Vec<Line2D> {
     lines
 }
 
-fn find_intersects(lines: &Vec<Line2D>) -> usize {
+fn find_intersects(lines: &[Line2D], hailstones: &[Hailstone]) -> usize {
     let mut count = 0;
     let line_count = lines.len();
     for i in 0..line_count {
         for j in i+1..line_count {
             let line1 = &lines[i];
             let line2 = &lines[j];
+
             if let Some(intersect) = line1.intersect(line2) {
                 if intersect.x >= MIN_COORDINATE && intersect.x <= MAX_COORDINATE
                 && intersect.y >= MIN_COORDINATE && intersect.y <= MAX_COORDINATE {
-                    count += 1;
+                    if is_approaching(&hailstones[i], &intersect) &&
+                        is_approaching(&hailstones[j], &intersect) {
+                        count += 1;
+                        continue
+                    }
                 }
-                println!("{intersect}");
+                // !("{intersect}");
             } else {
-                println!("No intersect: {line1}, {line2}");
+                // println!("No intersect: {line1}, {line2}");
             }
         }
     }
@@ -95,6 +99,18 @@ fn parse_numbers(slice: &str) -> Vec<isize> {
     numbers
 }
 
+type Speed2D = Point2D;
+pub fn is_approaching(hailstone: &Hailstone, target: &Point2D) -> bool {
+    let origin = Point2D::new(hailstone.pos.x as f64, hailstone.pos.y as f64);
+    let initial_distance = target.distance_no_sqrt(&origin);
+
+    let speed = Speed2D::new(hailstone.vel.x as f64, hailstone.vel.y as f64);
+    let transform = origin.transform2d(&speed);
+
+    let new_distance = target.distance_no_sqrt(&transform);
+    initial_distance > new_distance
+}
+
 pub struct Hailstone {
     pos: Position3D,
     vel: Velocity3D
@@ -146,6 +162,14 @@ impl Point2D {
     }
     pub fn new(x: f64, y: f64) -> Self {
         Self { x, y }
+    }
+    pub fn transform2d(&self, transform: &Self) -> Self {
+        Point2D::new(self.x + transform.x, self.y + transform.y)
+    }
+    pub fn distance_no_sqrt(&self, point: &Self) -> f64 {
+        let x_diff = self.x - point.x;
+        let y_diff = self.y - point.y;
+        x_diff * x_diff + y_diff * y_diff
     }
 }
 impl Display for Point2D {
