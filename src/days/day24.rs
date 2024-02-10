@@ -15,13 +15,13 @@ pub fn hailstones_demo1(lines: Vec<String>) -> usize {
 }
 fn hailstones1_bounds(lines: Vec<String>, min_coordinate: f64, max_coordinate: f64) -> usize {
     let hailstones = parse_input(lines);
-    let lines = create_lines(&hailstones);
+    let lines = create_line_trajectories(&hailstones);
     let intersects = find_intersects(&lines, &hailstones, min_coordinate, max_coordinate);
     // println!("Intersects: {intersects}");
     intersects
 }
 
-fn create_lines(hails: &Vec<Hailstone>) -> Vec<Line2D> {
+fn create_line_trajectories(hails: &Vec<Hailstone>) -> Vec<Line2D> {
     let mut lines = Vec::with_capacity(hails.len());
     for stone in hails {
         let p1 = Point2D::new_isize(stone.pos.x, stone.pos.y);
@@ -33,6 +33,13 @@ fn create_lines(hails: &Vec<Hailstone>) -> Vec<Line2D> {
         lines.push(Line2D::new(slope, b));
     }
     lines
+}
+
+fn create_2d_segment(p1: Point2D, p2: Point2D) -> Segment2D {
+    let slope = (p1.y - p2.y) / (p1.x - p2.x);
+    let b = p1.y - slope * p1.x;
+    let line = Line2D::new(slope, b);
+    Segment2D::new(line, p1, p2)
 }
 
 fn find_intersects(lines: &[Line2D], hailstones: &[Hailstone], min_coordinate: f64, max_coordinate: f64) -> usize {
@@ -128,14 +135,13 @@ impl Hailstone {
     pub fn new(position: Position3D, velocity: Velocity3D) -> Self {
         Self { pos: position, vel: velocity }
     }
-    pub fn transform3d(&mut self, times: usize) {
-        self.pos.x += self.vel.x * times as isize;
-        self.pos.y += self.vel.y * times as isize;
-        self.pos.z += self.vel.z * times as isize;
+    pub fn to_point_2d(&self) -> Point2D {
+        Point2D::new_isize(self.pos.x, self.pos.y)
     }
-    pub fn transform2d(&mut self, times: usize) {
-        self.pos.x += self.vel.x * times as isize;
-        self.pos.y += self.vel.y * times as isize;
+    pub fn at_time_2d(&self, time: usize) -> Point2D {
+        let x = self.pos.x + self.vel.x * time as isize;
+        let y = self.pos.y + self.vel.y * time as isize;
+        Point2D::new_isize(x, y)
     }
 }
 impl Display for Hailstone {
@@ -187,6 +193,17 @@ impl Display for Point2D {
     }
 }
 
+pub struct Segment2D {
+    line: Line2D,
+    p1: Point2D,
+    p2: Point2D,
+}
+impl Segment2D {
+    pub fn new(line: Line2D, p1: Point2D, p2: Point2D) -> Self {
+        Self { line, p1, p2 }
+    }
+}
+
 pub struct Line2D {
     // y = sx + b
     // 1 = s*-2 + b
@@ -211,4 +228,40 @@ impl Display for Line2D {
     fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
         formatter.write_str(&format!("y={}x + {}]", self.s, self.b))
     }
+}
+
+const TIME_BOUNDARY: usize = 20; // Complexity = n^2 * TIME_BOUNDARY^2
+
+// Assuming YOU CAN hit every hailstone in a single throw!
+pub fn hailstones2(lines: Vec<String>) -> usize {
+    let hailstones = parse_input(lines);
+    let lines = create_line_trajectories(&hailstones);
+
+    let length = hailstones.len();
+    // Cycle through all possible combinations of start and end hailstones (length^2) =~ 90000
+    for i in 0..length - 1 {
+        let start = &hailstones[i];
+        for j in i + 1..length {
+            let end = &hailstones[j];
+            // Find time t at start and end; Premises: t_start >= 0 && t_end >= t_start + length
+            for t_start in 0..TIME_BOUNDARY {
+                let max_time = length + t_start + TIME_BOUNDARY;
+                for t_end in length+t_start..max_time {
+                    let p1 = start.at_time_2d(t_start);
+                    let p2 = end.at_time_2d(t_end);
+                    let segment = create_2d_segment(p1, p2);
+                    // Make sure other hailstones cut through these segments
+                    // and that the time of intersection is never repeated twice
+                    for h in 0..length {
+                        if h == i || h == j {
+                            continue
+                        }
+                    }
+                    // If there are is more than one matching line Z axis checks need to be implemented
+                }
+            }
+
+        }
+    }
+    0
 }
