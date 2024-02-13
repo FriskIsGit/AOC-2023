@@ -5,6 +5,7 @@ const DEMO_MAX: f64 = 27f64;
 
 const MIN_COORDINATE: f64 = 200000000000000f64;
 const MAX_COORDINATE: f64 = 400000000000000f64;
+const INTEGER_DELTA: f64 = 0.00000000001;
 
 // For this part - disregard Z axis entirely
 pub fn hailstones1(lines: Vec<String>) -> usize {
@@ -59,7 +60,7 @@ fn find_intersects(lines: &[Line2D], hailstones: &[Hailstone], min_coordinate: f
                         continue
                     }
                 }
-                // !("{intersect}");
+                // println!("{intersect}");
             } else {
                 // println!("No intersect: {line1}, {line2}");
             }
@@ -115,6 +116,22 @@ fn parse_numbers(slice: &str) -> Vec<isize> {
     numbers
 }
 
+pub fn is_integer(mut num: f64) -> bool {
+    if num < 0.0 {
+        num = -num;
+    }
+    let remainder = num % 1.0;
+    if 1.0 - remainder < INTEGER_DELTA {
+        // 0.99999999999989
+        return true
+    }
+    if remainder < INTEGER_DELTA {
+        // 0.00000000000011
+        return true
+    }
+    return false
+}
+
 type Speed2D = Point2D;
 pub fn is_approaching(hailstone: &Hailstone, target: &Point2D) -> bool {
     let origin = Point2D::new(hailstone.pos.x as f64, hailstone.pos.y as f64);
@@ -148,7 +165,7 @@ impl Display for Hailstone {
     fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
         let pos = &self.pos;
         let v = &self.vel;
-        let display = &format!("[{},{},{}] | [{},{},{}]", pos.x, pos.y, pos.z, v.x, v.y, v.z);
+        let display = &format!("pos[{},{},{}]|v[{},{},{}]", pos.x, pos.y, pos.z, v.x, v.y, v.z);
         formatter.write_str(display)
     }
 }
@@ -223,14 +240,23 @@ impl Line2D {
         let y = line1.s * x + line1.b;
         Some(Point2D::new(x, y))
     }
+    pub fn new_perpendicular(&self) -> Self {
+        let slope = -1f64 / self.s;
+        Line2D::new(slope, self.b)
+    }
+    pub fn y(&self, x: f64) -> f64 {
+        self.s * x + self.b
+    }
 }
 impl Display for Line2D {
     fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
-        formatter.write_str(&format!("y={}x + {}]", self.s, self.b))
+        formatter.write_str(&format!("y={}x + {}", self.s, self.b))
     }
 }
 
-const TIME_BOUNDARY: usize = 20; // Complexity = n^2 * TIME_BOUNDARY^2
+// Complexity = n^2 * TIME_LOW_BOUNDARY * TIME_HIGH_BOUNDARY
+const TIME_LOW_BOUNDARY: usize = 5;
+const TIME_HIGH_BOUNDARY: usize = 5;
 
 // Assuming YOU CAN hit every hailstone in a single throw!
 pub fn hailstones2(lines: Vec<String>) -> usize {
@@ -240,27 +266,96 @@ pub fn hailstones2(lines: Vec<String>) -> usize {
     let length = hailstones.len();
     // Cycle through all possible combinations of start and end hailstones (length^2) =~ 90000
     for i in 0..length - 1 {
-        let start = &hailstones[i];
+        let mut start = &hailstones[i];
         for j in i + 1..length {
-            let end = &hailstones[j];
-            // Find time t at start and end; Premises: t_start >= 0 && t_end >= t_start + length
-            for t_start in 0..TIME_BOUNDARY {
-                let max_time = length + t_start + TIME_BOUNDARY;
-                for t_end in length+t_start..max_time {
-                    let p1 = start.at_time_2d(t_start);
-                    let p2 = end.at_time_2d(t_end);
-                    let segment = create_2d_segment(p1, p2);
-                    // Make sure other hailstones cut through these segments
-                    // and that the time of intersection is never repeated twice
-                    for h in 0..length {
-                        if h == i || h == j {
-                            continue
+            let mut end = &hailstones[j];
+            for swap in 0..2 {
+                // Swap start and end once
+                if swap == 1 {
+                    let temp = start;
+                    start = end;
+                    end = temp;
+                }
+                // Find time t at start and end; Premises: t_start >= 0 && t_end >= t_start + length
+                for t_start in 0..TIME_LOW_BOUNDARY {
+                    let max_time = length + t_start + TIME_HIGH_BOUNDARY;
+                    for t_end in length+t_start..max_time {
+                        let p1 = start.at_time_2d(t_start);
+                        let p2 = end.at_time_2d(t_end);
+                        let is_swap = swap == 1;
+                        // println!("is_swap: {is_swap} p1:{p1} p2:{p2} t_start:{t_start}; t_end:{t_end}");
+                        let segment = create_2d_segment(p1, p2);
+                        // println!("Line: {}", segment.line);
+                        // Make sure other hailstones cut through these segments
+                        // and that the time of intersection is never repeated twice
+                        let mut all_accepted = true;
+                        let mut times: Vec<f64> = vec![];
+                        for h in 0..length {
+                            if h == i || h == j {
+                                continue
+                            }
+                            let trajectory = &lines[h];
+                            let Some(intersect) = segment.line.intersect(trajectory) else {
+                                // Segment is parallel to trajectory of a hailstone - break
+                                all_accepted = false;
+                                break
+                            };
+                            // Trusting and using floating-point arithmetic can be very useful in
+                            // this case since movement vectors are always comprised of integers only
+                            if !is_integer(intersect.x) || !is_integer(intersect.y) {
+                                //println!("{}, {} removed", intersect.x, intersect.y);
+                                all_accepted = false;
+                                break
+                            }
+                            // If intersection is not within segment bounds (exclusively) - break
+                            let within_x =  (segment.p1.x < intersect.x && intersect.x < segment.p2.x)
+                                || (segment.p2.x < intersect.x && intersect.x < segment.p1.x);
+                            if !within_x {
+                                all_accepted = false;
+                                break
+                            }
+                            let within_y =  (segment.p1.y < intersect.y && intersect.y < segment.p2.y)
+                                || (segment.p2.y < intersect.y && intersect.y < segment.p1.y);
+                            if !within_y {
+                                all_accepted = false;
+                                break
+                            }
+                            let hailstone = &hailstones[h];
+                            if !is_approaching(hailstone, &intersect) {
+                                // The hailstone is travelling the other way - break
+                                all_accepted = false;
+                                break
+                            }
+                            // Make sure the intersect occurs at t*pos
+                            // where t is equal for both coordinates and is an integer
+                            let tx = (intersect.x - hailstone.pos.x as f64) / hailstone.vel.x as f64;
+                            if !is_integer(tx) {
+                                all_accepted = false;
+                                break
+                            }
+
+                            let ty = (intersect.y - hailstone.pos.y as f64) / hailstone.vel.y as f64;
+                            if !is_integer(ty) {
+                                all_accepted = false;
+                                break
+                            }
+                            let tx = tx.round();
+                            let ty = ty.round();
+                            if tx != ty && tx != t_start as f64 && tx != t_end as f64 {
+                                all_accepted = false;
+                                break
+                            }
+                            times.push(tx);
                         }
+                        if all_accepted {
+                            // println!("All hailstones accepted {i} {j} for segment_line: {} between", segment.line);
+                            println!("Times {:?}", times);
+                        }
+                        // If there is more than one line matching all above conditions then
+                        // Z axis checks need to be implemented to determine the correct answer
                     }
-                    // If there are is more than one matching line Z axis checks need to be implemented
                 }
             }
-
         }
     }
     0
